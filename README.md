@@ -114,8 +114,3 @@ Example pages will be added later:
 -   `examples/session-storage.html`
 -   `examples/advanced.html`
 
-------------------------------------------------------------------------
-
-## License
-
-Choose a license (MIT recommended).
