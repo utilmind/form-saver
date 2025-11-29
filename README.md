@@ -78,7 +78,8 @@ build step.
 </script>
 ```
 
-Only fields with a `name` attribute are saved.
+* Only fields with a `name` attribute are saved.
+* This example uses [AlertifyJS](https://github.com/MohammadYounes/AlertifyJS)
 
 ------------------------------------------------------------------------
 
