@@ -25,7 +25,7 @@ It is designed for classic jQuery-based applications that need auto-save
 -   Custom logic for choosing between **hash vs storage** on restore
     (including page-refresh detection).
 -   Per-field value transformation via `data('load', fn)` handlers.
--   Supports Twitter Typeahead inputs (via `.typeahead('val', ...)`) out
+-   Supports [Twitter Typeahead](https://github.com/twitter/typeahead.js/) inputs (via `.typeahead('val', ...)`) out
     of the box.
 -   Extra jQuery utilities for:
     -   **partial form reset** (reset only a block instead of entire
@@ -37,10 +37,10 @@ It is designed for classic jQuery-based applications that need auto-save
 
 ## Requirements
 
--   **jQuery** (any reasonably modern 1.x/2.x/3.x with `.on`, `.data`,
+-   [**jQuery**](https://github.com/jquery/jquery) (any reasonably modern 1.x/2.x/3.x with `.on`, `.data`,
     etc.)
 -   Optional:
-    -   Twitter Typeahead — only if you use its `.tt-input` fields.
+    -   [Twitter Typeahead](https://github.com/twitter/typeahead.js/) — only if you use its `.tt-input` fields.
     -   Your own "commons" utilities (e.g. `$.fn.resetForm`), if
         present.
 
