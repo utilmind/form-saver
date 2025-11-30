@@ -47,8 +47,7 @@
             which refers to https://stackoverflow.com/questions/10281962/is-there-a-minlength-validation-attribute-in-html/10294291#10294291
 
 */
-(function(window, $, undefined) {
-    // 'use strict';
+(function(window, $, undefined) { // 'use strict';
 
     /* If you would like to remove items with some specific prefix (storagePrefix) ONE BY ONE, use following:
 
@@ -492,10 +491,11 @@
                                         }
                                     }
 
-                                    if ($el.hasClass(saveDisabledStateClass) &&
-                                            (0 < loadHashOrStorage(saveDisabledStatePrefix + name))) {
+                                    if ($el.hasClass(saveDisabledStateClass)
+                                            && (0 < loadHashOrStorage(saveDisabledStatePrefix + name))) {
                                         $el.prop('disabled', 1)
                                            // this is very custom feature. Maybe worth to be moved to event handler. TODO: pls move it out of here!
+                                           // TODO: use custom event instead of the FontAwesome-specific classes!
                                            .closest('div').find('button i')
                                                             .removeClass('fa-eye')
                                                             .addClass('fa-eye-slash');
@@ -751,8 +751,10 @@
 
                 // We can remove all stored keys even after initialization of formSaver. Any moment, just call initFormSaver({reset:1}).
                 if (isReset) { // of course we don't need to loadForm on reset.
-                    (0 > noUseStorage ? ssStorage : llStorage)
-                        .removeItem('string' === typeof isReset ? isReset : storageKey);
+                    (0 > options.noUseStorage ? ssStorage : llStorage) // use sessionStorage or localStorage
+                        .removeItem('string' === typeof isReset
+                                        ? isReset
+                                        : options.storageKey || defStorageKey);
 
                 }else if (undefined === options.load || options.load) { // load by default
                     loadForm($form, options);
