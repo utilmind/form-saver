@@ -1,6 +1,6 @@
 /*
  * FormSaver 1.2, jQuery plugin for saving unsubmitted form content into the browser's localStorage.
- * (c) 2008-2025 https://github.com/utilmind
+ * (c) 2008-2025 https://github.com/utilmind/form-saver/
  */
 
 /* TODO: (investigation needed) Possible bug (not sure but possible, research needed) is the forward slashes in values. TODO: test values with '/'.
