@@ -540,28 +540,34 @@
 
         // Used to clear all storage keys with specified prefix (or list of prefixes).
         // For example to clear all stored data on user logout.
+        // CAUTION: It's size optimized, so we don't check wether keyPrefix(es) are valid strings. They shouldn't be empty/falsy. Otherwise all storage will be cleared.
         clearStorageKeys = function(keyPrefix, isSessionStorage) { // default is localStorage, but can be used for sessionStorage as well
-            var theStorage = isSessionStorage ? ssStorage : llStorage,
-                prefixLength = keyPrefix.length,
-                // get the number of all records in storage
-                storageLength = theStorage.length,
-                // array for keys we should remove from storage
+            var theStorage = isSessionStorage ? ssStorage : llStorage, // sessionStorage or localStorage
+
+                prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix], // or [String(keyPrefix)],
                 keysToRemove = [],
-                key, i;
+                i, j,
+                key, prefix;
 
-            for (i = 0; i < storageLength; ++i) {
-                key = theStorage.key(i);
+            // Collect all keys that start with any of the prefixes
+            for (i = 0; i < theStorage.length; ++i) { // length is the number of all records in storage
+                key = theStorage.key(i); // keys can't be falsy.
 
-                // add to array if starts with prefix
-                if (key.slice(0, prefixLength) === keyPrefix) { // alternative is key.startsWidth(keyPrefix) in ES6+ syntax
-                    keysToRemove.push(key);
+                for (j = 0; j < prefixes.length; ++j) {
+                    prefix = prefixes[j];
+
+                    // Alternative in ES6+ would be key.startsWith(prefix)
+                    if (key.slice(0, prefix.length) === prefix) {
+                        keysToRemove.push(key);
+                        break; // No need to check other prefixes for this key
+                    }
                 }
             }
 
-            // delete all collected keys with specified keyPrefix
-            keysToRemove.forEach(function(key) {
-                theStorage.removeItem(key);
-            });
+            // Delete all collected keys
+            for (i = 0; i < keysToRemove.length; ++i) {
+                theStorage.removeItem(keysToRemove[i]);
+            }
         },
 
         // Remove single value from the stored data, preserving the rest of data.
