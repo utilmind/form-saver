@@ -4,34 +4,34 @@
  */
 
 /* TODO: (investigation needed) Possible bug (not sure but possible, research needed) is the forward slashes in values. TODO: test values with '/'.
-   ------------------------------------
-   Usage example:
-       $myForm.on('restore', (e, storedDataTimestamp) => { // hook 'restore' before it will be triggered (immediately in the initFormSaver()).
-               if ((5 < ((Date.now() - storedDataTimestamp) / 1000)) // if stored more than 5 seconds ago. (But remember, that it saves all values to store every time when you refresh or close the page.)
-                       && window.alertify) {
-                   // display toaster alert
-                   alertify.success('Form content has been restored. If you would like to start filling everything from scratch, please click “Reset form” link above&nbsp;the&nbsp;form.', 10);
-               }
+    ------------------------------------
+    Usage example:
+        $myForm.on('restore', (e, storedDataTimestamp) => { // hook 'restore' before it will be triggered (immediately in the initFormSaver()).
+                if ((5 < ((Date.now() - storedDataTimestamp) / 1000)) // if stored more than 5 seconds ago. (But remember, that it saves all values to store every time when you refresh or close the page.)
+                        && window.alertify) {
+                    // display toaster alert
+                    alertify.success('Form content has been restored. If you would like to start filling everything from scratch, please click “Reset form” link above&nbsp;the&nbsp;form.', 10);
+                }
 
-           }).on('reset', e => {
-               if (window.alertify) {
-                   alertify.dismissAll(); // dismiss all toaster messages
-               }
+            }).on('reset', e => {
+                if (window.alertify) {
+                    alertify.dismissAll(); // dismiss all toaster messages
+                }
 
-           }).initFormSaver({
-               // Options. See the list of valid options below, in description of the initFormSaver()
-           });
+            }).initFormSaver({
+                // Options. See the list of valid options below, in description of the initFormSaver()
+            });
 
-   HINT: If you would like to hook the value loaded in storage, specify the handler (function) in the data('load')
+    HINT: If you would like to hook the value loaded in storage, specify the handler (function) in the data('load')
 
-         Example: $field.data('load', function(storedValue) { return storedValue.toUpperCase(); });
+            Example: $field.data('load', function(storedValue) { return storedValue.toUpperCase(); });
 
-         Example 2 (from some real project):
-             $checkExactAddress.data('load', function(storedVal, urlParam) {
-                 return (urlParam = getUrlParam('exact-address')) // We expect 'y' or 'n', if specified.
-                             ? urlParam.toUpperCase()
-                             : storedVal;
-             });
+            Example 2 (from some real project):
+                $checkExactAddress.data('load', function(storedVal, urlParam) {
+                    return (urlParam = getUrlParam('exact-address')) // We expect 'y' or 'n', if specified.
+                                ? urlParam.toUpperCase()
+                                : storedVal;
+                });
 
     Known issues:
         1. (* This issue not related to the formSaver functionality, just a note to workaround.)
@@ -371,9 +371,9 @@
                 // If we have #hash but still can use storage, choose what to use, #hash or storage.
                 if (hashLine) {
                     /* keyField is ignored when user reloads the page (e.g. on F5 key press) when some auto-saved field is focused.
-                       If field was not unfocused before page refresh, it using only localStorage and ignoring the #hash.
-                       Because browser updating the storage, but not updating the address line (probably doesn't have a time to update the address line).
-                       We don't want to roll back to value reflected in the address line before actual update of the input field and using only storage on page refresh.
+                        If field was not unfocused before page refresh, it using only localStorage and ignoring the #hash.
+                        Because browser updating the storage, but not updating the address line (probably doesn't have a time to update the address line).
+                        We don't want to roll back to value reflected in the address line before actual update of the input field and using only storage on page refresh.
                      */
                     var lastFocusedField = ssStorage.getItem(fieldUnloadFocus);
                     if (lastFocusedField && (getHashComponent(lastFocusedField) !== loadStoredItem(lastFocusedField))) {
@@ -393,7 +393,9 @@
                             }
                         }
 
-                        if (!isDifferent) hashLine = ''; // use storage instead.
+                        if (!isDifferent) {
+                            hashLine = ''; // use storage instead.
+                        }
 
                     }else if (keyField && ('string' === typeof keyField)) { // if keyField used and name (string value) specified
                         checkKeyField(keyField);
@@ -495,8 +497,8 @@
                                             && (0 < loadHashOrStorage(saveDisabledStatePrefix + name))) {
                                         $el.prop('disabled', 1)
                                            // this is very custom feature. Maybe worth to be moved to event handler. TODO: pls move it out of here!
-                                           // TODO: use custom event instead of the FontAwesome-specific classes!
-                                           .closest('div').find('button i')
+                                            // TODO: use custom event instead of the FontAwesome-specific classes!
+                                            .closest('div').find('button i')
                                                             .removeClass('fa-eye')
                                                             .addClass('fa-eye-slash');
                                     }
@@ -536,7 +538,8 @@
             return isSomethingLoaded;
         },
 
-        // Used to clear all storage keys with specified prefix. For example to clear all stored data on user logout.
+        // Used to clear all storage keys with specified prefix (or list of prefixes).
+        // For example to clear all stored data on user logout.
         clearStorageKeys = function(keyPrefix, isSessionStorage) { // default is localStorage, but can be used for sessionStorage as well
             var theStorage = isSessionStorage ? ssStorage : llStorage,
                 prefixLength = keyPrefix.length,
@@ -706,37 +709,37 @@
     $.fn[initPluginFnName] = function(options) { // if controlQuery not specified, it use defControlQuery
         /* Valid options are:
 
-               storageKey: the name of key in storage (either localStorage or sessionStorage)
-               noUseStorage: don't update localStorage when auto-updating. -1 = use sessionStorage (which clearing when the page is closed) instead of localStorage
-               noUseHash: don't update #hashline when auto-updating
-               keep1stHash: keep the string used as prefix in the #hashline
-               storePasswords: okay to store & load content of the password input fields. Default is FALSE = do NOT store any content of password fields in localStorage/hash, since it's critically unsecure.
+                storageKey: the name of key in storage (either localStorage or sessionStorage)
+                noUseStorage: don't update localStorage when auto-updating. -1 = use sessionStorage (which clearing when the page is closed) instead of localStorage
+                noUseHash: don't update #hashline when auto-updating
+                keep1stHash: keep the string used as prefix in the #hashline
+                storePasswords: okay to store & load content of the password input fields. Default is FALSE = do NOT store any content of password fields in localStorage/hash, since it's critically unsecure.
 
-               keyField: if we use both #hash and localStorage, we should not mix their values on loading if some field omitted.
-                            If this key field found in #hashline, we'll keep using #hash for the rest of field, w/o restoring anything from localStorage.
-                            And wise versa, if the `keyField` omitted in #hash but found in storage, this means malformed #hash, so everything will be restored from localStorage only.
-                            * You can set keyField to 1 or boolean TRUE. So if any first restorable field found on the form has value in #hash -- we'll keep using #hash,
-                              w/o checking storage. And wise versa, if any first field found in localStorage, we'll keep using only storage.
-                            * keyField is ignored when user reloads the page (e.g. on F5 key press) when some auto-saved field is focused.
-                              If field was not unfocused before page refresh, it using only localStorage and ignoring the #hash.
-                              Because browser updating the storage, but not updating the address line (probably doesn't have a time to update the address line).
-                              We don't want to roll back to value reflected in the address line before actual update of the input field and using only storage on page refresh.
+                keyField: if we use both #hash and localStorage, we should not mix their values on loading if some field omitted.
+                                If this key field found in #hashline, we'll keep using #hash for the rest of field, w/o restoring anything from localStorage.
+                                And wise versa, if the `keyField` omitted in #hash but found in storage, this means malformed #hash, so everything will be restored from localStorage only.
+                                * You can set keyField to 1 or boolean TRUE. So if any first restorable field found on the form has value in #hash -- we'll keep using #hash,
+                                w/o checking storage. And wise versa, if any first field found in localStorage, we'll keep using only storage.
+                                * keyField is ignored when user reloads the page (e.g. on F5 key press) when some auto-saved field is focused.
+                                If field was not unfocused before page refresh, it using only localStorage and ignoring the #hash.
+                                Because browser updating the storage, but not updating the address line (probably doesn't have a time to update the address line).
+                                We don't want to roll back to value reflected in the address line before actual update of the input field and using only storage on page refresh.
 
-            // CALLBACKS (not events)
+                // CALLBACKS (not events)
 
-               onLoadStorage: set up a handler function to get stored data (only from localStorage, NOT HASH, STORAGE ONLY!) before it's restored
-                              ...and have a possibility to cancel loading if something else (e.g. URL parameters) require to not restore the form from the localStorage.
+                onLoadStorage: set up a handler function to get stored data (only from localStorage, NOT HASH, STORAGE ONLY!) before it's restored
+                                ...and have a possibility to cancel loading if something else (e.g. URL parameters) require to not restore the form from the localStorage.
 
             // METHODS:
 
-               load: true by default (if undefined), set to FALSE to NOT LOAD anything on start
-               reset: (storageKey) erase all keys/value with storageKey as key prefix. If 'reset' has non string value -- storageKey used to remove all stored keys with the same prefix.
+                load: true by default (if undefined), set to FALSE to NOT LOAD anything on start
+                reset: (storageKey) erase all keys/value with storageKey as key prefix. If 'reset' has non string value -- storageKey used to remove all stored keys with the same prefix.
 
-           Also if you'd like to hook an event when form is reset/restored, hook the form events. Both 'reset' and 'restore' are valid.
-           Eg. $myForm.initFormSaver(options)
-                   .on('reset', e => {...})
-                   .on('restore', e => {...}) // make sure to set up this event handler *before* the initFormSaver executed
-                   .on('submit', e => {...}); // etc...
+            Also if you'd like to hook an event when form is reset/restored, hook the form events. Both 'reset' and 'restore' are valid.
+            Eg. $myForm.initFormSaver(options)
+                    .on('reset', e => {...})
+                    .on('restore', e => {...}) // make sure to set up this event handler *before* the initFormSaver executed
+                    .on('submit', e => {...}); // etc...
          */
 
         if (!options) {
