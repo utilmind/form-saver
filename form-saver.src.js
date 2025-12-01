@@ -141,71 +141,72 @@
                         var hash,
                             param = '',
                             // Load existing JSON object from storage to preserve keys from other forms/pages
+                            //   - The main idea is to not to overwrite other forms' data stored under the same storageKey.
+                            //     Because the same forms may have different sets of fields in different states.
                             store = noUseStorage ? {} : parseJSON(theStorage.getItem(storageKey));
 
+                        // We selecting only fields with `name` attribute.
                         $form.find(getServeControls(storePasswords))
                              .not(classNoSave) // additional filter that applies to selected (served) controls
                                  .each(function() { // ATTN! "readonly" fields saved too. Set "no-save" class (see classNoSave) to avoid the field.
                             var el = this,
                                 $el = $(el),
                                 type = el.type,
-                                name = el.name,
+                                name = el.name, // name must be present, we select only fields with `name` attribute
                                 val = $el.val(), // The main difference between vanilla's .value and jQuery's .val() is that val() is able to retrieve arrays(). We don't want to parse arrays, jQuery is easier.
                                                  // TODO: we actually want to parse arrays to store them in native format (instead of string) into JSON.
                                 storeFalseVal,
                                 isDefaultChecked; // for checkboxes only
 
-                            //if (name) { // unnamed fields not saved (UPD. We selecting only fields with name attribute)
-                                // For radio we should check whether any value selected/checked. If nothing selected, then let's remove item.
-                                if ('radio' === type) {
-                                    if (!el.checked) {
-                                        // See, whether any radio box in group is checked. Unfortunately we should check it for each unchecked radio...
-                                        if ($form.find('input[type="radio"][name="' + name + '"]:checked').length) {
-                                            return; // continue
-                                        }
-                                        // Nothing checked. Let's remove value. (And this will be performed multiple times... But okay...)
-                                        val = null;
+                            // For radio we should check whether any value selected/checked. If nothing selected, then let's remove item.
+                            if ('radio' === type) {
+                                if (!el.checked) {
+                                    // See, whether any radio box in group is checked. Unfortunately we should check it for each unchecked radio...
+                                    if ($form.find('input[type="radio"][name="' + name + '"]:checked').length) {
+                                        return; // continue
                                     }
-
-                                }else if ('checkbox' === type) {
-                                    isDefaultChecked = null !== el.getAttribute('checked'); // will be either TRUE or FALSE if "checkbox" attribute present. Only if it's NULL it's not there.
-                                    val = el.checked
-                                            ? (isDefaultChecked ? null : 1) // falsy = when checked field which already supposed to be checked by default (and it has 'checked' attribute). No need to store = NULL.
-                                            : ((storeFalseVal = isDefaultChecked) ? 0 : null); // not checked, but supposed to be checked by default -- save 0 (really unchecked). Otherwise no need to save = NULL.
-                                            // regular checkbox may have only 2 states: checked (truly) and unchecked (falsy). We saving state only for non-default values.
-                                            //     * Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
-                                            //       But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
-
-                                }else if (Array.isArray(val)) { // <select multiple>?
-                                    val = JSON.stringify(val);
+                                    // Nothing checked. Let's remove value. (And this will be performed multiple times... But okay...)
+                                    val = null;
                                 }
 
-                                // Update JSON object in storage:
-                                // - if we have value or explicit "false" value -> store/update
-                                // - otherwise (no value) -> delete key if it exists
+                            }else if ('checkbox' === type) {
+                                isDefaultChecked = null !== el.getAttribute('checked'); // will be either TRUE or FALSE if "checkbox" attribute present. Only if it's NULL it's not there.
+                                val = el.checked
+                                        ? (isDefaultChecked ? null : 1) // falsy = when checked field which already supposed to be checked by default (and it has 'checked' attribute). No need to store = NULL.
+                                        : ((storeFalseVal = isDefaultChecked) ? 0 : null); // not checked, but supposed to be checked by default -- save 0 (really unchecked). Otherwise no need to save = NULL.
+                                        // regular checkbox may have only 2 states: checked (truly) and unchecked (falsy). We saving state only for non-default values.
+                                        //   (*) Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
+                                        //       But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
+
+                            }else if (Array.isArray(val)) { // <select multiple>?
+                                val = JSON.stringify(val);
+                            }
+
+                            // Update JSON object in storage:
+                            // - if we have value or explicit "false" value -> store/update
+                            // - otherwise (no value) -> delete key if it exists
+                            if (!noUseStorage) {
+                                if (val || storeFalseVal) {
+                                    store[name] = val;
+                                }else if (store && store.hasOwnProperty(name)) {
+                                    delete store[name];
+                                }
+                            }
+
+                            // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
+                            if (val || storeFalseVal) { // Remember, that 0 or '' can be valid values. But we don't want to save empty strings for all input fields.
+                                param += '&' + name + '=' + encodeURIComponent(val);
+                            }
+
+                            if ($el.hasClass(saveDisabledStateClass)) {
+                                val = el.disabled ? 1 : 0;
                                 if (!noUseStorage) {
-                                    if (val || storeFalseVal) {
-                                        store[name] = val;
-                                    }else if (store && store.hasOwnProperty(name)) {
-                                        delete store[name];
-                                    }
+                                    theStorage.setItem(storageKey + saveDisabledStatePrefix + name, val);
                                 }
-
-                                // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
-                                if (val || storeFalseVal) { // Remember, that 0 or '' can be valid values. But we don't want to save empty strings for all input fields.
-                                    param += '&' + name + '=' + encodeURIComponent(val);
+                                if (val) { // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
+                                    param += '&' + saveDisabledStatePrefix + name + '=' + val;
                                 }
-
-                                if ($el.hasClass(saveDisabledStateClass)) {
-                                    val = el.disabled ? 1 : 0;
-                                    if (!noUseStorage) {
-                                        theStorage.setItem(storageKey + saveDisabledStatePrefix + name, val);
-                                    }
-                                    if (val) { // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
-                                        param += '&' + saveDisabledStatePrefix + name + '=' + val;
-                                    }
-                                }
-                            //}
+                            }
                         });
 
                         // Leave hash prefix intact.
