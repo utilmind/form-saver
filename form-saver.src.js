@@ -140,7 +140,8 @@
                     if (noUseStorage || !$form.data(STR_STATUS_IS_LOADING)) { // not about to write OR not Loading right now...
                         var hash,
                             param = '',
-                            store = {};
+                            // Load existing JSON object from storage to preserve keys from other forms/pages
+                            store = noUseStorage ? {} : parseJSON(theStorage.getItem(storageKey));
 
                         $form.find(getServeControls(storePasswords))
                              .not(classNoSave) // additional filter that applies to selected (served) controls
@@ -155,51 +156,44 @@
                                 isDefaultChecked; // for checkboxes only
 
                             //if (name) { // unnamed fields not saved (UPD. We selecting only fields with name attribute)
-                                // For radio we should check whether any value checked. If nothing checked -- let's remove item.
+                                // For radio we should check whether any value selected/checked. If nothing selected, then let's remove item.
                                 if ('radio' === type) {
                                     if (!el.checked) {
                                         // See, whether any radio box in group is checked. Unfortunately we should check it for each unchecked radio...
-                                        if ($form.find('input[type="radio"][name="'+ name +'"]:checked').length) {
+                                        if ($form.find('input[type="radio"][name="' + name + '"]:checked').length) {
                                             return; // continue
                                         }
-                                        // Nothing checked. Let's clear the value (and this will be performed multiple times... But okay...)
+                                        // Nothing checked. Let's remove value. (And this will be performed multiple times... But okay...)
                                         val = null;
                                     }
+
                                 }else if ('checkbox' === type) {
-                                    isDefaultChecked = null !== el.getAttribute('checked'); // FYI: it returns empty string (false) even if "checkbox" attribute present. Only if it's NULL it's not there.
+                                    isDefaultChecked = null !== el.getAttribute('checked'); // will be either TRUE or FALSE if "checkbox" attribute present. Only if it's NULL it's not there.
                                     val = el.checked
-                                            ? (isDefaultChecked ? false : 1) // false = when checked field which already supposed to be checked by default (and it has 'checked' attribute). No need to store = FALSE.
-                                            : ((storeFalseVal = isDefaultChecked) ? 0 : false); // not checked, but supposed to be checked by default -- save 0 (really unchecked). Otherwise no need to save = FALSE.
-                                            // regular checkbox may have only 2 states: checked (1) and unchecked (). We saving state only for non-default values.
-                                            // AK, IMPORTANT NOTES:
-                                            //     1. If the rule above will be changed, test pro-pursuit categories.
-                                            //     2. Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
-                                            //        But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
+                                            ? (isDefaultChecked ? null : 1) // falsy = when checked field which already supposed to be checked by default (and it has 'checked' attribute). No need to store = NULL.
+                                            : ((storeFalseVal = isDefaultChecked) ? 0 : null); // not checked, but supposed to be checked by default -- save 0 (really unchecked). Otherwise no need to save = NULL.
+                                            // regular checkbox may have only 2 states: checked (truly) and unchecked (falsy). We saving state only for non-default values.
+                                            //     * Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
+                                            //       But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
 
-                                    /*  AK 13.01.2022: legacy. Attempt to store value of the checkbox. But we don't need it, since checkbox actually have 2 states. We don't need to know the value or save it.
-                                        -----------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
-                                        var convertOn = 1; // 'on' values of checkboxes being stored as specified value. If false, 'on' not converted, stored as-is instead.
-                                        if (!el.checked) {
-                                            val = ''; // ATTN! It's very tricky moment. Checkbox value can be '0'. Actually even '', but '' will be considered as unchecked.
-                                                      // ATTN2: Please DO NOT set unchecked value as NULL (so it will delete item from storage).
-                                                      //        We can have default state as "checked". So "unchecked" state will never be saved.
-                                        }else if (('on' === val) && convertOn) // AK: maybe this is odd :( But I don't like that default 'on'.
-                                            val = convertOn;
-                                    */
-                                }
-
-                                if (Array.isArray(val)) { // <select multiple>?
+                                }else if (Array.isArray(val)) { // <select multiple>?
                                     val = JSON.stringify(val);
                                 }
 
-                                if (!noUseStorage && (val || storeFalseVal)) {
-                                    store[name] = val;
+                                // Update JSON object in storage:
+                                // - if we have value or explicit "false" value -> store/update
+                                // - otherwise (no value) -> delete key if it exists
+                                if (!noUseStorage) {
+                                    if (val || storeFalseVal) {
+                                        store[name] = val;
+                                    }else if (store && store.hasOwnProperty(name)) {
+                                        delete store[name];
+                                    }
                                 }
 
                                 // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
                                 if (val || storeFalseVal) { // Remember, that 0 or '' can be valid values. But we don't want to save empty strings for all input fields.
-                                    param+= '&' + name + '=' + encodeURIComponent(val);
+                                    param += '&' + name + '=' + encodeURIComponent(val);
                                 }
 
                                 if ($el.hasClass(saveDisabledStateClass)) {
@@ -208,7 +202,7 @@
                                         theStorage.setItem(storageKey + saveDisabledStatePrefix + name, val);
                                     }
                                     if (val) { // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
-                                        param+= '&' + saveDisabledStatePrefix + name + '=' + val;
+                                        param += '&' + saveDisabledStatePrefix + name + '=' + val;
                                     }
                                 }
                             //}
@@ -216,13 +210,13 @@
 
                         // Leave hash prefix intact.
                         if (keep1stHash && (hash = location.hash)) {
-                            var i = hash.indexOf('&'); // & is our delimiter between parameters of hashline. We must strip all content after first & (including it too).
+                            var i = hash.indexOf('&'); // & is our prefix for values in address line (#hash). We must strip all content after first & (including it too).
                             if (-1 !== i) {
                                 hash = hash.slice(0, i);
                             }
-                            hash+= param;
+                            hash += param;
 
-                        }else { // no hash present yet. Create new. Okay to put it without prefix (coordinates?). Prefix (coordinates?) will be added later on first move/zoom action.
+                        }else { // no hash present yet. Create new hash. (This hash can be coordinates or bounding box in the mapping apps. The prefix (coordinates) will be added later on first zoom/move.)
                             if (hash = param.slice(1)) {
                                 hash = '#' + hash;
                             }
@@ -316,7 +310,6 @@
                     ? '' // prevent using #hash
                     : location.hash.slice(1), // remove 1st character #
                 storedData = (!noUseStorage && parseJSON(theStorage.getItem(storageKey))) || {}, // parseJSON from the "utilmind commons". We always need object (empty if data broken), not string.
-                storedDataTimestamp,
 
                 // escape special characters to use the string as-is in regular expression. Idea: https://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
                 escapeRegExp = function(str) {
