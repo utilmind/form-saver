@@ -1,117 +1,82 @@
 # FormSaver
 
-FormSaver is a small jQuery plugin (ES5-era) for **saving and restoring
-unsubmitted form content** in the browser using `localStorage`,
-`sessionStorage`, and/or the URL hash.
+FormSaver is a small form/settings persistence toolkit.
 
-It is designed for classic jQuery-based applications that need auto-save
-/ auto-restore of long forms without introducing a modern framework.
+The repository now contains two implementations:
 
-> ⚠️ This plugin targets legacy jQuery / ES5 codebases. It is
-> intentionally not written in modern ES6+ style.
+- `react/` — the new React + TypeScript module for modern applications, including Next.js.
+- `jquery/` — the legacy jQuery / ES5 plugin kept for existing PHP + Bootstrap + jQuery projects.
 
-------------------------------------------------------------------------
+The React module is the current direction of the project. The jQuery plugin is preserved as-is for backward compatibility.
 
-## Features
+## Current status
 
--   Automatically saves form fields to `localStorage` (or
-    `sessionStorage`) as the user types.
--   Restores form content on page load, including:
-    -   text inputs, textareas, selects (including `<select multiple>`)
-    -   checkboxes and radio groups, with smart handling of default
-        states
--   Optional mirroring of all saved values into the URL hash for deep
-    links / sharable states.
--   Custom logic for choosing between **hash vs storage** on restore
-    (including page-refresh detection).
--   Per-field value transformation via `data('load', fn)` handlers.
--   Supports [Twitter Typeahead](https://github.com/twitter/typeahead.js/) inputs (via `.typeahead('val', ...)`) out
-    of the box.
--   Extra jQuery utilities for:
-    -   **partial form reset** (reset only a block instead of entire
-        form)
-    -   **"check all / uncheck all"** checkbox handling
--   Global helper functions for managing stored data across the site.
+The React migration is in progress.
 
-------------------------------------------------------------------------
+See [`TODO-migration-to-react.md`](./TODO-migration-to-react.md) for the full migration checklist.
 
-## Requirements
+## React module
 
--   [**jQuery**](https://github.com/jquery/jquery) (any reasonably modern 1.x/2.x/3.x with `.on`, `.data`,
-    etc.)
--   Optional:
-    -   [Twitter Typeahead](https://github.com/twitter/typeahead.js/) — only if you use its `.tt-input` fields.
-    -   Your own "commons" utilities (e.g. `$.fn.resetForm`), if
-        present.
+The React version is designed around controlled form state:
 
-The plugin is written in plain ES5 and does not require any bundler or
-build step.
+- restore saved values from `localStorage` or `sessionStorage` after client-side mount;
+- save values automatically when settings change;
+- work safely in Next.js without touching browser storage during server-side rendering;
+- preserve unknown stored fields when several related forms share the same `storageKey`;
+- provide typed helpers for common controls: text inputs, textarea, checkbox, radio, select, and multi-select.
 
-------------------------------------------------------------------------
+Basic example:
 
-## Installation
+```tsx
+import { useFormSaver } from './react/src';
 
-``` html
-<script src="jquery.min.js"></script>
-<script src="form-saver.js"></script>
+type SettingsForm = {
+  search: string;
+  enabled: boolean;
+  mode: 'simple' | 'advanced';
+  category: string;
+  tags: string[];
+  notes: string;
+};
+
+const initialValues: SettingsForm = {
+  search: '',
+  enabled: false,
+  mode: 'simple',
+  category: '',
+  tags: [],
+  notes: '',
+};
+
+export function SettingsPage() {
+  const form = useFormSaver<SettingsForm>({
+    storageKey: 'settings-form',
+    initialValues,
+  });
+
+  return (
+    <form>
+      <input {...form.bind.text('search')} />
+      <label>
+        <input type="checkbox" {...form.bind.checkbox('enabled')} />
+        Enabled
+      </label>
+      <textarea {...form.bind.textarea('notes')} />
+    </form>
+  );
+}
 ```
 
-------------------------------------------------------------------------
+See [`react/README.md`](./react/README.md) for the React API draft.
 
-## Basic usage
+## Legacy jQuery plugin
 
-``` html
-<form id="contact-form"></form>
+The old jQuery plugin remains under `jquery/`.
 
-<script>
-  $('#contact-form')
-    .on('restore', function (e, storedTimestamp) {
-      if ((Date.now() - storedTimestamp) / 1000 > 5 && window.alertify) {
-        alertify.success(
-          'Form content has been restored. Click "Reset form" if you want to start from scratch.',
-          10
-        );
-      }
-    })
-    .on('reset', function () {})
-    .initFormSaver({ storageKey: 'contact-form' });
-</script>
-```
+It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization.
 
-* Only fields with a `name` attribute are saved.
-* This example uses [AlertifyJS](https://github.com/MohammadYounes/AlertifyJS)
+See [`jquery/README.md`](./jquery/README.md) for legacy usage.
 
-------------------------------------------------------------------------
+## License
 
-## jQuery API
-
-### `$(form).initFormSaver(options)`
-
-Main entry point. All options are optional:
-
-    {
-      storageKey: "form",
-      noUseStorage: 0,
-      noUseHash: 0,
-      keep1stHash: 0,
-      storePasswords: 0,
-      keyField: null,
-      onLoadStorage: function (storedData) { return storedData; },
-      load: true,
-      reset: false
-    }
-
-(Additional detailed documentation omitted here due to length; it's
-included in earlier output.)
-
-------------------------------------------------------------------------
-
-## Examples
-
-Example pages will be added later:
-
--   `examples/basic.html`
--   `examples/hash-only.html`
--   `examples/session-storage.html`
--   `examples/advanced.html`
-
+See [`LICENSE.txt`](./LICENSE.txt).
