@@ -143,7 +143,11 @@
                             // Load existing JSON object from storage to preserve keys from other forms/pages
                             //   - The main idea is to not to overwrite other forms' data stored under the same storageKey.
                             //     Because the same forms may have different sets of fields in different states.
-                            store = noUseStorage ? {} : parseJSON(theStorage.getItem(storageKey));
+                            store;
+
+                        if (!noUseStorage || !(store = parseJSON(theStorage.getItem(storageKey)))) {
+                            store = {};
+                        }
 
                         // We selecting only fields with `name` attribute.
                         $form.find(getServeControls(storePasswords))
