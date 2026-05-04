@@ -1,0 +1,10 @@
+# Legacy jQuery plugin must keep its original formatting
+jquery/**
+
+# Dependencies and build output
+node_modules/
+react/node_modules/
+react/demo/node_modules/
+dist/
+build/
+coverage/
