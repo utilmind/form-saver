@@ -50,6 +50,7 @@ The new React implementation lives in `react/`.
 - [x] Add reset and clear helpers.
 - [x] Make the generic form type compatible with ordinary TypeScript interfaces.
 - [x] Avoid writing initial default values to storage on first mount unless `saveOnMount` is enabled.
+- [x] Fix the demo restore loop caused by non-memoized callback options.
 - [x] Review the hook API against a typical Next.js settings form.
 - [ ] Decide whether the default debounce value should stay at `150ms`.
 

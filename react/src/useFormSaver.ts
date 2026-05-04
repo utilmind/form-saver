@@ -43,6 +43,35 @@ function valueToSelectValue(value: FormSaverValue | undefined): string | number 
   return String(value);
 }
 
+// Stores the latest callback/value without making effects depend on its identity.
+function useLatestRef<TValue>(value: TValue): { current: TValue } {
+  var ref = useRef(value);
+
+  ref.current = value;
+  return ref;
+}
+
+// Merges a patch into state but keeps the same object reference when nothing changed.
+function mergeValuesIfChanged<TValues extends FormSaverValuesConstraint<TValues>>(
+  current: TValues,
+  patch: Partial<TValues>
+): TValues {
+  var nextValues: TValues | null = null;
+  var key: keyof TValues;
+
+  for (key in patch) {
+    if (Object.prototype.hasOwnProperty.call(patch, key) && !Object.is(current[key], patch[key])) {
+      if (!nextValues) {
+        nextValues = { ...current };
+      }
+
+      nextValues[key] = patch[key] as TValues[keyof TValues];
+    }
+  }
+
+  return nextValues || current;
+}
+
 // Reads all selected option values from a native multi-select element.
 function getMultiSelectValues(select: HTMLSelectElement): string[] {
   var values: string[] = [];
@@ -104,6 +133,11 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
   var [restoredAt, setRestoredAt] = useState<number | undefined>();
   var [lastSavedAt, setLastSavedAt] = useState<number | undefined>();
   var [isStorageAvailable, setIsStorageAvailable] = useState(false);
+  var mapBeforeSaveRef = useLatestRef(mapBeforeSave);
+  var mapAfterLoadRef = useLatestRef(mapAfterLoad);
+  var onRestoreRef = useLatestRef(onRestore);
+  var onSaveRef = useLatestRef(onSave);
+  var onErrorRef = useLatestRef(onError);
 
   // Keep the latest initial values available for reset without forcing rehydration.
   useEffect(function () {
@@ -131,30 +165,27 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
       stored = readStoredForm<TValues>(storageKey, { storage: storage });
 
       if (stored) {
-        loadedValues = mapAfterLoad ? mapAfterLoad(stored.values, stored.meta) : stored.values;
+        loadedValues = mapAfterLoadRef.current ? mapAfterLoadRef.current(stored.values, stored.meta) : stored.values;
 
         if (loadedValues) {
           knownValues = pickKnownValues<TValues>(loadedValues, initialValuesRef.current, restoreUnknownKeys);
           setValuesState(function (current: TValues) {
-            return {
-              ...current,
-              ...knownValues,
-            };
+            return mergeValuesIfChanged<TValues>(current, knownValues);
           });
           setRestoredAt(stored.meta.savedAt);
-          if (onRestore) {
-            onRestore(knownValues, stored.meta);
+          if (onRestoreRef.current) {
+            onRestoreRef.current(knownValues, stored.meta);
           }
         }
       }
     } catch (error) {
-      if (onError) {
-        onError(error);
+      if (onErrorRef.current) {
+        onErrorRef.current(error);
       }
     } finally {
       setHasRestored(true);
     }
-  }, [enabled, mapAfterLoad, onError, onRestore, restoreUnknownKeys, storage, storageKey]);
+  }, [enabled, restoreUnknownKeys, storage, storageKey]);
 
   // Save the current controlled state to browser storage.
   var saveValues = useCallback(
@@ -170,24 +201,24 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
           storage: storage,
           version: version,
           mergeUnknownKeys: mergeUnknownKeys,
-          mapBeforeSave: mapBeforeSave,
+          mapBeforeSave: mapBeforeSaveRef.current,
         });
 
         if (saved) {
           setLastSavedAt(saved.meta.savedAt);
           setIsStorageAvailable(true);
-          if (onSave) {
-            onSave(saved.values, saved.meta);
+          if (onSaveRef.current) {
+            onSaveRef.current(saved.values, saved.meta);
           }
         }
       } catch (error) {
         setIsStorageAvailable(false);
-        if (onError) {
-          onError(error);
+        if (onErrorRef.current) {
+          onErrorRef.current(error);
         }
       }
     },
-    [enabled, mergeUnknownKeys, mapBeforeSave, onError, onSave, storage, storageKey, version]
+    [enabled, mergeUnknownKeys, storage, storageKey, version]
   );
 
   // Persist value changes after restore is complete.
@@ -223,10 +254,10 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
   var setValue = useCallback(
     function <K extends FormSaverFieldName<TValues>>(name: K, value: TValues[K]): void {
       setValuesState(function (current: TValues) {
-        return {
-          ...current,
-          [name]: value,
-        };
+        var patch = {} as Partial<TValues>;
+
+        patch[name] = value;
+        return mergeValuesIfChanged<TValues>(current, patch);
       });
     },
     []
@@ -236,10 +267,7 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
     setValuesState(function (current: TValues) {
       var resolvedPatch = typeof patch === 'function' ? patch(current) : patch;
 
-      return {
-        ...current,
-        ...resolvedPatch,
-      };
+      return mergeValuesIfChanged<TValues>(current, resolvedPatch);
     });
   }, []);
 
@@ -256,11 +284,11 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
       removeStoredForm(storageKey, storage);
       setLastSavedAt(undefined);
     } catch (error) {
-      if (onError) {
-        onError(error);
+      if (onErrorRef.current) {
+        onErrorRef.current(error);
       }
     }
-  }, [onError, storage, storageKey]);
+  }, [storage, storageKey]);
 
   var saveNow = useCallback(function (): void {
     saveValues(values);
@@ -342,18 +370,36 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
     [setValue, values]
   );
 
-  return {
-    values: values,
-    setValue: setValue,
-    setValues: setValues,
-    replaceValues: replaceValues,
-    resetValues: resetValues,
-    clearStoredValues: clearStoredValues,
-    saveNow: saveNow,
-    hasRestored: hasRestored,
-    restoredAt: restoredAt,
-    lastSavedAt: lastSavedAt,
-    isStorageAvailable: isStorageAvailable,
-    bind: bind,
-  };
+  return useMemo<UseFormSaverResult<TValues>>(
+    function () {
+      return {
+        values: values,
+        setValue: setValue,
+        setValues: setValues,
+        replaceValues: replaceValues,
+        resetValues: resetValues,
+        clearStoredValues: clearStoredValues,
+        saveNow: saveNow,
+        hasRestored: hasRestored,
+        restoredAt: restoredAt,
+        lastSavedAt: lastSavedAt,
+        isStorageAvailable: isStorageAvailable,
+        bind: bind,
+      };
+    },
+    [
+      values,
+      setValue,
+      setValues,
+      replaceValues,
+      resetValues,
+      clearStoredValues,
+      saveNow,
+      hasRestored,
+      restoredAt,
+      lastSavedAt,
+      isStorageAvailable,
+      bind,
+    ]
+  );
 }
