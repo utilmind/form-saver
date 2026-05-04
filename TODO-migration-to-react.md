@@ -48,15 +48,17 @@ The new React implementation lives in `react/`.
 - [x] Add typed `setValue`, `setValues`, and `replaceValues` helpers.
 - [x] Add basic bind helpers for text inputs, textarea, checkbox, radio, select, and multi-select.
 - [x] Add reset and clear helpers.
-- [ ] Review the hook API against a real Next.js settings form.
+- [x] Make the generic form type compatible with ordinary TypeScript interfaces.
+- [x] Avoid writing initial default values to storage on first mount unless `saveOnMount` is enabled.
+- [x] Review the hook API against a typical Next.js settings form.
 - [ ] Decide whether the default debounce value should stay at `150ms`.
 
 ## Phase 4: Compatibility and behavior decisions
 
-- [ ] Decide whether the React storage format must be compatible with the legacy jQuery storage object.
-- [ ] Decide whether URL hash synchronization should be reintroduced later.
-- [ ] Decide whether per-field load transforms are needed in the hook API.
-- [ ] Decide whether dirty-state tracking is needed.
+- [x] Decide whether the React storage format must be compatible with the legacy jQuery storage object. Decision: no compatibility layer; React stores one clean JSON envelope per `storageKey`.
+- [x] Decide whether URL hash synchronization should be reintroduced later. Decision: postpone; not part of the React MVP.
+- [x] Decide whether per-field load transforms are needed in the hook API. Decision: use form-level `mapAfterLoad` for now; per-field transforms can be added after real usage.
+- [ ] Decide whether dirty-state tracking is needed after the demo app exists.
 - [ ] Decide whether validation integration should be built-in or left to application code.
 
 ## Phase 5: Tests
@@ -78,7 +80,7 @@ The new React implementation lives in `react/`.
 ## Phase 7: Packaging and publishing
 
 - [ ] Decide package name.
-- [ ] Decide package manager (`npm`, `pnpm`, or `yarn`).
+- [x] Decide package manager (`npm`, `pnpm`, or `yarn`). Decision: npm, because `react/package-lock.json` is already present.
 - [ ] Add final build configuration.
 - [ ] Add `exports` / `types` fields for package consumers.
 - [ ] Add linting / formatting if desired.
@@ -88,7 +90,6 @@ The new React implementation lives in `react/`.
 ## Open questions
 
 1. Which Next.js and React versions should be considered the main target?
-2. Should the React module support the old jQuery storage format, or is a new cleaner storage format acceptable?
-3. Should two different forms with the same `storageKey` restore only their own known fields, or should they also expose unknown saved fields in React state?
-4. Is URL hash support still needed for the React version, or can it be postponed indefinitely?
-5. Which package manager should the repository standardize on?
+2. Which stack should the one-page demo use: Vite, Next.js, or both?
+3. Should dirty-state tracking be exposed by the hook?
+4. Should validation integration be built-in or left entirely to application code?

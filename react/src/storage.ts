@@ -2,7 +2,7 @@ import type {
   BrowserStorageName,
   FormSaverFieldName,
   FormSaverMeta,
-  FormSaverValues,
+  FormSaverValuesConstraint,
   ReadStoredFormOptions,
   StoredFormSaverData,
   WriteStoredFormOptions,
@@ -38,8 +38,8 @@ function safeParseJson(value: string | null): unknown {
   }
 }
 
-// Accepts only the React FormSaver envelope format. Legacy compatibility can be added later.
-function normalizeStoredData<TValues extends FormSaverValues>(raw: unknown): StoredFormSaverData<TValues> | null {
+// Accepts only the React FormSaver envelope format. Legacy compatibility is intentionally not supported.
+function normalizeStoredData<TValues extends FormSaverValuesConstraint<TValues>>(raw: unknown): StoredFormSaverData<TValues> | null {
   if (!isPlainObject(raw)) {
     return null;
   }
@@ -52,7 +52,7 @@ function normalizeStoredData<TValues extends FormSaverValues>(raw: unknown): Sto
 }
 
 // Merges current form values into existing storage while preserving unknown keys by default.
-function mergeValueObjects<TValues extends FormSaverValues>(
+function mergeValueObjects<TValues extends FormSaverValuesConstraint<TValues>>(
   existingValues: Partial<TValues>,
   nextValues: Partial<TValues>,
   mergeUnknownKeys: boolean
@@ -96,7 +96,7 @@ export function isStorageAvailable(storageName: BrowserStorageName = 'localStora
 }
 
 // Reads and validates one stored form envelope.
-export function readStoredForm<TValues extends FormSaverValues>(
+export function readStoredForm<TValues extends FormSaverValuesConstraint<TValues>>(
   storageKey: string,
   options: ReadStoredFormOptions = {}
 ): StoredFormSaverData<TValues> | null {
@@ -110,7 +110,7 @@ export function readStoredForm<TValues extends FormSaverValues>(
 }
 
 // Writes a form envelope and returns the exact data that was persisted.
-export function writeStoredForm<TValues extends FormSaverValues>(
+export function writeStoredForm<TValues extends FormSaverValuesConstraint<TValues>>(
   storageKey: string,
   values: Partial<TValues>,
   options: WriteStoredFormOptions<TValues> = {}
@@ -155,7 +155,7 @@ export function removeStoredForm(storageKey: string, storageName: BrowserStorage
   }
 }
 
-export function removeStoredValueKeys<TValues extends FormSaverValues>(
+export function removeStoredValueKeys<TValues extends FormSaverValuesConstraint<TValues>>(
   storageKey: string,
   keysToRemove: Array<FormSaverFieldName<TValues>>,
   storageName: BrowserStorageName = 'localStorage'

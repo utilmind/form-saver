@@ -15,6 +15,7 @@ export type {
   FormSaverPrimitive,
   FormSaverValue,
   FormSaverValues,
+  FormSaverValuesConstraint,
   ReadStoredFormOptions,
   StoredFormSaverData,
   UseFormSaverBinders,

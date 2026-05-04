@@ -113,6 +113,7 @@ useFormSaver<TValues>({
   storage: 'localStorage',
   enabled: true,
   debounceMs: 150,
+  saveOnMount: false,
   version,
   mergeUnknownKeys: true,
   restoreUnknownKeys: false,
@@ -133,6 +134,7 @@ useFormSaver<TValues>({
 | `storage` | `'localStorage'` | Use `'localStorage'` or `'sessionStorage'`. |
 | `enabled` | `true` | Disable restore/save behavior when set to `false`. |
 | `debounceMs` | `150` | Delay before saving after a state change. Use `0` to save immediately. |
+| `saveOnMount` | `false` | When `false`, the hook does not write `initialValues` to storage immediately after the first restore cycle. Set to `true` if you want storage to be created on mount even before the user changes anything. |
 | `version` | `undefined` | Optional storage format/application version saved in metadata. |
 | `mergeUnknownKeys` | `true` | Preserve stored fields that are not present in the current form state. |
 | `restoreUnknownKeys` | `false` | Include unknown stored fields in React state. Usually keep this `false`. |
@@ -174,6 +176,24 @@ The hook includes convenience binders for common controlled fields:
 
 You can ignore these helpers and wire controls manually with `values`, `setValue`, and `setValues`.
 
+
+## TypeScript form types
+
+You can use ordinary TypeScript `type` aliases or `interface`s for form values.
+No index signature is required.
+
+```ts
+interface SettingsFormValues {
+  query: string;
+  enabled: boolean;
+  mode: 'basic' | 'advanced';
+  tags: string[];
+  notes: string;
+}
+```
+
+Each field value must still be storage-friendly: `string`, `number`, `boolean`, `null`, or an array of those primitive values.
+
 ## Storage format
 
 The React version stores a JSON envelope:
@@ -191,7 +211,7 @@ The React version stores a JSON envelope:
 }
 ```
 
-This is intentionally cleaner than the legacy jQuery plugin storage format. Compatibility with the legacy format is still an open TODO item.
+This is intentionally cleaner than the legacy jQuery plugin storage format. Compatibility with the legacy format is not planned because the React module is used in different applications.
 
 ## Multiple related forms
 

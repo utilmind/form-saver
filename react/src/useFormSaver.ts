@@ -10,7 +10,7 @@ import {
 import type {
   FormSaverFieldName,
   FormSaverValue,
-  FormSaverValues,
+  FormSaverValuesConstraint,
   UseFormSaverBinders,
   UseFormSaverOptions,
   UseFormSaverResult,
@@ -56,7 +56,7 @@ function getMultiSelectValues(select: HTMLSelectElement): string[] {
 }
 
 // Keeps React state limited to known fields unless the caller explicitly opts into unknown keys.
-function pickKnownValues<TValues extends FormSaverValues>(
+function pickKnownValues<TValues extends FormSaverValuesConstraint<TValues>>(
   values: Partial<TValues>,
   initialValues: TValues,
   restoreUnknownKeys: boolean
@@ -77,7 +77,7 @@ function pickKnownValues<TValues extends FormSaverValues>(
   return result;
 }
 
-export function useFormSaver<TValues extends FormSaverValues>(
+export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>(
   options: UseFormSaverOptions<TValues>
 ): UseFormSaverResult<TValues> {
   var {
@@ -86,6 +86,7 @@ export function useFormSaver<TValues extends FormSaverValues>(
     storage = 'localStorage',
     enabled = true,
     debounceMs = 150,
+    saveOnMount = false,
     version,
     mergeUnknownKeys = true,
     restoreUnknownKeys = false,
@@ -97,6 +98,7 @@ export function useFormSaver<TValues extends FormSaverValues>(
   } = options;
 
   var initialValuesRef = useRef(initialValues);
+  var skipNextSaveRef = useRef(!saveOnMount);
   var [values, setValuesState] = useState<TValues>(initialValues);
   var [hasRestored, setHasRestored] = useState(false);
   var [restoredAt, setRestoredAt] = useState<number | undefined>();
@@ -107,6 +109,11 @@ export function useFormSaver<TValues extends FormSaverValues>(
   useEffect(function () {
     initialValuesRef.current = initialValues;
   }, [initialValues]);
+
+  // Keep the skip flag in sync when the storage target changes.
+  useEffect(function () {
+    skipNextSaveRef.current = !saveOnMount;
+  }, [saveOnMount, storageKey, storage]);
 
   // Restore after mount so Next.js server rendering never touches browser storage.
   useEffect(function () {
@@ -189,6 +196,11 @@ export function useFormSaver<TValues extends FormSaverValues>(
       var timerId: ReturnType<typeof setTimeout>;
 
       if (!enabled || !hasRestored) {
+        return;
+      }
+
+      if (skipNextSaveRef.current) {
+        skipNextSaveRef.current = false;
         return;
       }
 

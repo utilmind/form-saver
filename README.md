@@ -23,6 +23,7 @@ The React version is designed around controlled form state:
 - save values automatically when settings change;
 - work safely in Next.js without touching browser storage during server-side rendering;
 - preserve unknown stored fields when several related forms share the same `storageKey`;
+- store all React values as one readable JSON envelope per `storageKey`;
 - provide typed helpers for common controls: text inputs, textarea, checkbox, radio, select, and multi-select.
 
 Basic example:
@@ -68,6 +69,8 @@ export function SettingsPage() {
 ```
 
 See [`react/README.md`](./react/README.md) for the React API draft.
+
+The React storage format is intentionally independent from the legacy jQuery plugin storage format.
 
 ## Legacy jQuery plugin
 
