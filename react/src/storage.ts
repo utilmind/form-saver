@@ -150,7 +150,7 @@ export function removeStoredForm(
     storageKey: string,
     storageName: BrowserStorageName = 'localStorage'
 ): void {
-    var storage = getWindowStorage(storageName)
+    const storage = getWindowStorage(storageName)
 
     if (storage && storageKey) {
         storage.removeItem(storageKey)
