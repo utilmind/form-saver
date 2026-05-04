@@ -72,6 +72,23 @@ See [`react/README.md`](./react/README.md) for the React API draft.
 
 The React storage format is intentionally independent from the legacy jQuery plugin storage format.
 
+
+## Demo app
+
+A small Vite demo is available under `react/demo/` for manual testing of the React hook.
+
+```bash
+cd react/demo
+npm install
+npm run dev
+```
+
+Or, after installing the demo dependencies, from `react/`:
+
+```bash
+npm run demo:dev
+```
+
 ## Legacy jQuery plugin
 
 The old jQuery plugin remains under `jquery/`.

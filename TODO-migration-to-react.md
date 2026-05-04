@@ -63,6 +63,8 @@ The new React implementation lives in `react/`.
 
 ## Phase 5: Tests
 
+The demo app exists now, so the next test step should focus on the storage helper and merge behavior before hook testing.
+
 - [ ] Add unit tests for the storage helper.
 - [ ] Add unit tests for merge behavior with unknown keys.
 - [ ] Add hook tests for restore, save, reset, and clear behavior.
@@ -71,11 +73,11 @@ The new React implementation lives in `react/`.
 
 ## Phase 6: Demo React application
 
-- [ ] Create a small one-page React test application.
-- [ ] Include text inputs, textarea, checkbox, radio buttons, single select, and multi-select.
-- [ ] Show current saved JSON for debugging.
-- [ ] Add buttons for reset, clear storage, and manual save.
-- [ ] Make the demo easy to build and run locally.
+- [x] Create a small one-page React test application.
+- [x] Include text inputs, textarea, checkbox, radio buttons, single select, and multi-select.
+- [x] Show current saved JSON for debugging.
+- [x] Add buttons for reset, clear storage, and manual save.
+- [x] Make the demo easy to build and run locally.
 
 ## Phase 7: Packaging and publishing
 
@@ -90,6 +92,6 @@ The new React implementation lives in `react/`.
 ## Open questions
 
 1. Which Next.js and React versions should be considered the main target?
-2. Which stack should the one-page demo use: Vite, Next.js, or both?
+2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
 3. Should dirty-state tracking be exposed by the hook?
 4. Should validation integration be built-in or left entirely to application code?

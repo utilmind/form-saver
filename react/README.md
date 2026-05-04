@@ -102,6 +102,36 @@ export function SettingsForm() {
 }
 ```
 
+
+## Demo app
+
+A small Vite demo lives in `react/demo/`. It is intentionally simple and is meant for local manual testing of the hook.
+
+On first use, install the demo dependencies:
+
+```bash
+cd react/demo
+npm install
+```
+
+Then run it from `react/demo/`:
+
+```bash
+npm run dev
+npm run build
+npm run preview
+```
+
+Or, after installing the demo dependencies, run the helper scripts from `react/`:
+
+```bash
+npm run demo:dev
+npm run demo:build
+npm run demo:preview
+```
+
+The demo includes text inputs, textarea, checkbox, radio buttons, single select, multi-select, a manually wired number input, reset/clear/manual-save buttons, and a debug panel that shows both React state and the raw saved `localStorage` JSON.
+
 ## API draft
 
 ### `useFormSaver(options)`
