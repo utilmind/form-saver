@@ -1,7 +1,5 @@
-import { useCallback, useMemo, useState } from 'react'
-import type { ChangeEvent } from 'react'
-
 import { useFormSaver } from 'form-saver-react'
+import { type ChangeEvent, useCallback, useMemo, useState } from 'react'
 
 const STORAGE_KEY = 'form-saver-react-demo-settings'
 
@@ -28,40 +26,31 @@ const initialSettings: DemoSettings = {
     notes: ''
 }
 
-function readSavedJson(): string {
-    var raw: string | null
-    var parsed: unknown
-
+const readSavedJson = (): string => {
     if (typeof window === 'undefined') {
         return 'Browser storage is not available during server rendering.'
     }
 
-    raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(STORAGE_KEY)
 
     if (!raw) {
         return 'Nothing saved yet.'
     }
 
     try {
-        parsed = JSON.parse(raw)
-        return JSON.stringify(parsed, null, 2)
-    } catch (_error) {
+        return JSON.stringify(JSON.parse(raw) as unknown, null, 2)
+    } catch {
         return raw
     }
 }
 
-function formatTimestamp(timestamp: number | undefined): string {
-    if (!timestamp) {
-        return 'never'
-    }
+const formatTimestamp = (timestamp: number | undefined): string =>
+    timestamp ? new Date(timestamp).toLocaleString() : 'never'
 
-    return new Date(timestamp).toLocaleString()
-}
-
-export function App() {
+export const App = () => {
     const [savedJson, setSavedJson] = useState<string>('Loading...')
 
-    const refreshSavedJson = useCallback(function (): void {
+    const refreshSavedJson = useCallback((): void => {
         setSavedJson(readSavedJson())
     }, [])
 
@@ -72,58 +61,46 @@ export function App() {
         mergeUnknownKeys: true,
         onRestore: refreshSavedJson,
         onSave: refreshSavedJson,
-        onError: function (error: unknown): void {
+        onError: (error: unknown): void => {
             // Keep demo errors visible without interrupting the UI.
             console.error('FormSaver demo error:', error)
         }
     })
 
-    const statusText = useMemo(
-        function (): string {
-            if (!form.hasRestored) {
-                return 'Restoring saved values...'
-            }
+    const statusText = useMemo((): string => {
+        if (!form.hasRestored) {
+            return 'Restoring saved values...'
+        }
 
-            if (!form.isStorageAvailable) {
-                return 'Storage is not available in this browser context.'
-            }
+        if (!form.isStorageAvailable) {
+            return 'Storage is not available in this browser context.'
+        }
 
-            return 'Ready. Change any field and the state will be saved automatically.'
-        },
-        [form.hasRestored, form.isStorageAvailable]
-    )
+        return 'Ready. Change any field and the state will be saved automatically.'
+    }, [form.hasRestored, form.isStorageAvailable])
 
     const handleResultsPerPageChange = useCallback(
-        function (event: ChangeEvent<HTMLInputElement>): void {
-            var nextValue = Number(event.target.value)
+        (event: ChangeEvent<HTMLInputElement>): void => {
+            const nextValue = Number(event.target.value)
 
             form.setValue('resultsPerPage', Number.isFinite(nextValue) ? nextValue : 0)
         },
         [form]
     )
 
-    const handleResetValues = useCallback(
-        function (): void {
-            form.resetValues()
-        },
-        [form]
-    )
+    const handleResetValues = useCallback((): void => {
+        form.resetValues()
+    }, [form])
 
-    const handleClearStorage = useCallback(
-        function (): void {
-            form.clearStoredValues()
-            refreshSavedJson()
-        },
-        [form, refreshSavedJson]
-    )
+    const handleClearStorage = useCallback((): void => {
+        form.clearStoredValues()
+        refreshSavedJson()
+    }, [form, refreshSavedJson])
 
-    const handleSaveNow = useCallback(
-        function (): void {
-            form.saveNow()
-            refreshSavedJson()
-        },
-        [form, refreshSavedJson]
-    )
+    const handleSaveNow = useCallback((): void => {
+        form.saveNow()
+        refreshSavedJson()
+    }, [form, refreshSavedJson])
 
     return (
         <main className="app-shell">
@@ -142,7 +119,7 @@ export function App() {
             <section className="layout-grid">
                 <form
                     className="settings-card"
-                    onSubmit={function (event) {
+                    onSubmit={(event) => {
                         event.preventDefault()
                     }}
                 >

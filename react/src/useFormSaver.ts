@@ -1,5 +1,12 @@
-import type React from 'react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import {
+    type ChangeEvent,
+    type MutableRefObject,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from 'react'
 
 import {
     isStorageAvailable as checkStorageAvailable,
@@ -17,32 +24,28 @@ import type {
 } from './types'
 
 // Converts persisted primitive values to a controlled input string.
-function valueToInputString(value: FormSaverValue | undefined): string {
-    return value === null || value === undefined || Array.isArray(value) ? '' : String(value)
-}
+const valueToInputString = (value: FormSaverValue | undefined): string =>
+    value === null || value === undefined || Array.isArray(value) ? '' : String(value)
 
-function valueToSelectValue(
+const valueToSelectValue = (
     value: FormSaverValue | undefined
-): string | number | readonly string[] {
+): string | number | readonly string[] => {
     if (Array.isArray(value)) {
-        return value.map(function (item) {
-            return String(item)
-        })
+        return value.map((item) => String(item))
     }
 
     if (typeof value === 'number') {
         return value
     }
 
-    if (value === null || value === undefined) {
-        return ''
-    }
-
-    return String(value)
+    return value === null || value === undefined ? '' : String(value)
 }
 
+const valueToMultiSelectValue = (value: FormSaverValue | undefined): readonly string[] =>
+    Array.isArray(value) ? value.map((item) => String(item)) : []
+
 // Stores the latest callback/value without making effects depend on its identity.
-function useLatestRef<TValue>(value: TValue): { current: TValue } {
+const useLatestRef = <TValue>(value: TValue): MutableRefObject<TValue> => {
     const ref = useRef(value)
 
     ref.current = value
@@ -50,54 +53,42 @@ function useLatestRef<TValue>(value: TValue): { current: TValue } {
 }
 
 // Merges a patch into state but keeps the same object reference when nothing changed.
-function mergeValuesIfChanged<TValues extends FormSaverValuesConstraint<TValues>>(
+const mergeValuesIfChanged = <TValues extends FormSaverValuesConstraint<TValues>>(
     current: TValues,
     patch: Partial<TValues>
-): TValues {
+): TValues => {
     let nextValues: TValues | null = null
-    let key: keyof TValues
 
-    for (key in patch) {
+    for (const key in patch) {
         if (
             Object.prototype.hasOwnProperty.call(patch, key) &&
             !Object.is(current[key], patch[key])
         ) {
-            if (!nextValues) {
-                nextValues = { ...current }
-            }
-
-            nextValues[key] = patch[key] as TValues[keyof TValues]
+            nextValues ??= { ...current }
+            nextValues[key] = patch[key] as TValues[typeof key]
         }
     }
 
-    return nextValues || current
+    return nextValues ?? current
 }
 
 // Reads all selected option values from a native multi-select element.
-function getMultiSelectValues(select: HTMLSelectElement): string[] {
-    const values: string[] = []
-
-    for (let i = 0; i < select.selectedOptions.length; ++i) {
-        values.push(select.selectedOptions[i].value)
-    }
-
-    return values
-}
+const getMultiSelectValues = (select: HTMLSelectElement): string[] =>
+    Array.from(select.selectedOptions, (option) => option.value)
 
 // Keeps React state limited to known fields unless the caller explicitly opts into unknown keys.
-function pickKnownValues<TValues extends FormSaverValuesConstraint<TValues>>(
+const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
     initialValues: TValues,
     restoreUnknownKeys: boolean
-): Partial<TValues> {
-    var result: Partial<TValues> = restoreUnknownKeys ? { ...values } : {}
-    var key: keyof TValues
-
+): Partial<TValues> => {
     if (restoreUnknownKeys) {
-        return result
+        return { ...values }
     }
 
-    for (key in initialValues) {
+    const result: Partial<TValues> = {}
+
+    for (const key in initialValues) {
         if (Object.prototype.hasOwnProperty.call(initialValues, key) && values[key] !== undefined) {
             result[key] = values[key]
         }
@@ -106,10 +97,10 @@ function pickKnownValues<TValues extends FormSaverValuesConstraint<TValues>>(
     return result
 }
 
-export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>(
+export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>(
     options: UseFormSaverOptions<TValues>
-): UseFormSaverResult<TValues> {
-    var {
+): UseFormSaverResult<TValues> => {
+    const {
         storageKey,
         initialValues,
         storage = 'localStorage',
@@ -126,295 +117,259 @@ export function useFormSaver<TValues extends FormSaverValuesConstraint<TValues>>
         onError
     } = options
 
-    var initialValuesRef = useRef(initialValues)
-    var skipNextSaveRef = useRef(!saveOnMount)
-    var [values, setValuesState] = useState<TValues>(initialValues)
-    var [hasRestored, setHasRestored] = useState(false)
-    var [restoredAt, setRestoredAt] = useState<number | undefined>()
-    var [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
-    var [isStorageAvailable, setIsStorageAvailable] = useState(false)
-    var mapBeforeSaveRef = useLatestRef(mapBeforeSave)
-    var mapAfterLoadRef = useLatestRef(mapAfterLoad)
-    var onRestoreRef = useLatestRef(onRestore)
-    var onSaveRef = useLatestRef(onSave)
-    var onErrorRef = useLatestRef(onError)
+    const initialValuesRef = useRef(initialValues)
+    const skipNextSaveRef = useRef(!saveOnMount)
+    const [values, setValuesState] = useState<TValues>(initialValues)
+    const [hasRestored, setHasRestored] = useState(false)
+    const [restoredAt, setRestoredAt] = useState<number | undefined>()
+    const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
+    const [isStorageAvailable, setIsStorageAvailable] = useState(false)
+    const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
+    const mapAfterLoadRef = useLatestRef(mapAfterLoad)
+    const onRestoreRef = useLatestRef(onRestore)
+    const onSaveRef = useLatestRef(onSave)
+    const onErrorRef = useLatestRef(onError)
 
     // Keep the latest initial values available for reset without forcing rehydration.
-    useEffect(
-        function () {
-            initialValuesRef.current = initialValues
-        },
-        [initialValues]
-    )
+    useEffect(() => {
+        initialValuesRef.current = initialValues
+    }, [initialValues])
 
     // Keep the skip flag in sync when the storage target changes.
-    useEffect(
-        function () {
-            skipNextSaveRef.current = !saveOnMount
-        },
-        [saveOnMount, storageKey, storage]
-    )
+    useEffect(() => {
+        skipNextSaveRef.current = !saveOnMount
+    }, [saveOnMount, storage, storageKey])
 
     // Restore after mount so Next.js server rendering never touches browser storage.
-    useEffect(
-        function () {
-            var stored
-            var loadedValues: Partial<TValues> | null | undefined
-            var knownValues: Partial<TValues>
+    useEffect(() => {
+        if (!enabled) {
+            setHasRestored(true)
+            return
+        }
 
-            if (!enabled) {
-                setHasRestored(true)
+        try {
+            setIsStorageAvailable(checkStorageAvailable(storage))
+
+            const stored = readStoredForm<TValues>(storageKey, { storage })
+
+            if (!stored) {
                 return
             }
 
-            try {
-                setIsStorageAvailable(checkStorageAvailable(storage))
-                stored = readStoredForm<TValues>(storageKey, { storage: storage })
+            const loadedValues = mapAfterLoadRef.current
+                ? mapAfterLoadRef.current(stored.values, stored.meta)
+                : stored.values
 
-                if (stored) {
-                    loadedValues = mapAfterLoadRef.current
-                        ? mapAfterLoadRef.current(stored.values, stored.meta)
-                        : stored.values
-
-                    if (loadedValues) {
-                        knownValues = pickKnownValues<TValues>(
-                            loadedValues,
-                            initialValuesRef.current,
-                            restoreUnknownKeys
-                        )
-                        setValuesState(function (current: TValues) {
-                            return mergeValuesIfChanged<TValues>(current, knownValues)
-                        })
-                        setRestoredAt(stored.meta.savedAt)
-                        if (onRestoreRef.current) {
-                            onRestoreRef.current(knownValues, stored.meta)
-                        }
-                    }
-                }
-            } catch (error) {
-                if (onErrorRef.current) {
-                    onErrorRef.current(error)
-                }
-            } finally {
-                setHasRestored(true)
+            if (!loadedValues) {
+                return
             }
-        },
-        [enabled, restoreUnknownKeys, storage, storageKey]
-    )
+
+            const knownValues = pickKnownValues<TValues>(
+                loadedValues,
+                initialValuesRef.current,
+                restoreUnknownKeys
+            )
+
+            setValuesState((current) => mergeValuesIfChanged<TValues>(current, knownValues))
+            setRestoredAt(stored.meta.savedAt)
+            onRestoreRef.current?.(knownValues, stored.meta)
+        } catch (error) {
+            onErrorRef.current?.(error)
+        } finally {
+            setHasRestored(true)
+        }
+    }, [
+        enabled,
+        mapAfterLoadRef,
+        onErrorRef,
+        onRestoreRef,
+        restoreUnknownKeys,
+        storage,
+        storageKey
+    ])
 
     // Save the current controlled state to browser storage.
-    var saveValues = useCallback(
-        function (nextValues: TValues): void {
-            var saved
-
+    const saveValues = useCallback(
+        (nextValues: TValues): void => {
             if (!enabled || !storageKey) {
                 return
             }
 
             try {
-                saved = writeStoredForm<TValues>(storageKey, nextValues, {
-                    storage: storage,
-                    version: version,
-                    mergeUnknownKeys: mergeUnknownKeys,
+                const saved = writeStoredForm<TValues>(storageKey, nextValues, {
+                    storage,
+                    version,
+                    mergeUnknownKeys,
                     mapBeforeSave: mapBeforeSaveRef.current
                 })
 
                 if (saved) {
                     setLastSavedAt(saved.meta.savedAt)
                     setIsStorageAvailable(true)
-                    if (onSaveRef.current) {
-                        onSaveRef.current(saved.values, saved.meta)
-                    }
+                    onSaveRef.current?.(saved.values, saved.meta)
                 }
             } catch (error) {
                 setIsStorageAvailable(false)
-                if (onErrorRef.current) {
-                    onErrorRef.current(error)
-                }
+                onErrorRef.current?.(error)
             }
         },
-        [enabled, mergeUnknownKeys, storage, storageKey, version]
+        [
+            enabled,
+            mapBeforeSaveRef,
+            mergeUnknownKeys,
+            onErrorRef,
+            onSaveRef,
+            storage,
+            storageKey,
+            version
+        ]
     )
 
     // Persist value changes after restore is complete.
-    useEffect(
-        function () {
-            var timerId: ReturnType<typeof setTimeout>
+    useEffect(() => {
+        if (!enabled || !hasRestored) {
+            return
+        }
 
-            if (!enabled || !hasRestored) {
-                return
-            }
+        if (skipNextSaveRef.current) {
+            skipNextSaveRef.current = false
+            return
+        }
 
-            if (skipNextSaveRef.current) {
-                skipNextSaveRef.current = false
-                return
-            }
+        if (debounceMs <= 0) {
+            saveValues(values)
+            return
+        }
 
-            if (debounceMs <= 0) {
-                saveValues(values)
-                return
-            }
+        const timerId = setTimeout(() => {
+            saveValues(values)
+        }, debounceMs)
 
-            timerId = setTimeout(function () {
-                saveValues(values)
-            }, debounceMs)
+        return () => {
+            clearTimeout(timerId)
+        }
+    }, [debounceMs, enabled, hasRestored, saveValues, values])
 
-            return function () {
-                clearTimeout(timerId)
-            }
+    const setValue = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K, value: TValues[K]): void => {
+            setValuesState((current) => {
+                const patch: Partial<TValues> = {}
+
+                patch[name] = value
+                return mergeValuesIfChanged<TValues>(current, patch)
+            })
         },
-        [debounceMs, enabled, hasRestored, saveValues, values]
+        []
     )
 
-    var setValue = useCallback(function <K extends FormSaverFieldName<TValues>>(
-        name: K,
-        value: TValues[K]
-    ): void {
-        setValuesState(function (current: TValues) {
-            var patch = {} as Partial<TValues>
+    const setValues = useCallback(
+        (patch: Partial<TValues> | ((current: TValues) => Partial<TValues>)): void => {
+            setValuesState((current) => {
+                const resolvedPatch = typeof patch === 'function' ? patch(current) : patch
 
-            patch[name] = value
-            return mergeValuesIfChanged<TValues>(current, patch)
-        })
-    }, [])
+                return mergeValuesIfChanged<TValues>(current, resolvedPatch)
+            })
+        },
+        []
+    )
 
-    var setValues = useCallback(function (
-        patch: Partial<TValues> | ((current: TValues) => Partial<TValues>)
-    ): void {
-        setValuesState(function (current: TValues) {
-            var resolvedPatch = typeof patch === 'function' ? patch(current) : patch
-
-            return mergeValuesIfChanged<TValues>(current, resolvedPatch)
-        })
-    }, [])
-
-    var replaceValues = useCallback(function (nextValues: TValues): void {
+    const replaceValues = useCallback((nextValues: TValues): void => {
         setValuesState(nextValues)
     }, [])
 
-    var resetValues = useCallback(function (nextValues?: TValues): void {
-        setValuesState(nextValues || initialValuesRef.current)
+    const resetValues = useCallback((nextValues?: TValues): void => {
+        setValuesState(nextValues ?? initialValuesRef.current)
     }, [])
 
-    var clearStoredValues = useCallback(
-        function (): void {
-            try {
-                removeStoredForm(storageKey, storage)
-                setLastSavedAt(undefined)
-            } catch (error) {
-                if (onErrorRef.current) {
-                    onErrorRef.current(error)
-                }
-            }
-        },
-        [storage, storageKey]
-    )
+    const clearStoredValues = useCallback((): void => {
+        try {
+            removeStoredForm(storageKey, storage)
+            setLastSavedAt(undefined)
+        } catch (error) {
+            onErrorRef.current?.(error)
+        }
+    }, [onErrorRef, storage, storageKey])
 
-    var saveNow = useCallback(
-        function (): void {
-            saveValues(values)
-        },
-        [saveValues, values]
-    )
+    const saveNow = useCallback((): void => {
+        saveValues(values)
+    }, [saveValues, values])
 
     // Convenience binders for common controlled form controls.
-    var bind = useMemo<UseFormSaverBinders<TValues>>(
-        function () {
-            return {
-                text: function <K extends FormSaverFieldName<TValues>>(name: K) {
-                    return {
-                        name: name,
-                        value: valueToInputString(values[name]),
-                        onChange: function (event: React.ChangeEvent<HTMLInputElement>) {
-                            setValue(name, event.target.value as TValues[K])
-                        }
-                    }
-                },
+    const bind = useMemo<UseFormSaverBinders<TValues>>(
+        () => ({
+            text: <K extends FormSaverFieldName<TValues>>(name: K) => ({
+                name,
+                value: valueToInputString(values[name]),
+                onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                    setValue(name, event.target.value as TValues[K])
+                }
+            }),
 
-                textarea: function <K extends FormSaverFieldName<TValues>>(name: K) {
-                    return {
-                        name: name,
-                        value: valueToInputString(values[name]),
-                        onChange: function (event: React.ChangeEvent<HTMLTextAreaElement>) {
-                            setValue(name, event.target.value as TValues[K])
-                        }
-                    }
-                },
+            textarea: <K extends FormSaverFieldName<TValues>>(name: K) => ({
+                name,
+                value: valueToInputString(values[name]),
+                onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+                    setValue(name, event.target.value as TValues[K])
+                }
+            }),
 
-                checkbox: function <K extends FormSaverFieldName<TValues>>(name: K) {
-                    return {
-                        name: name,
-                        checked: Boolean(values[name]),
-                        onChange: function (event: React.ChangeEvent<HTMLInputElement>) {
-                            setValue(name, event.target.checked as TValues[K])
-                        }
-                    }
-                },
+            checkbox: <K extends FormSaverFieldName<TValues>>(name: K) => ({
+                name,
+                checked: Boolean(values[name]),
+                onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                    setValue(name, event.target.checked as TValues[K])
+                }
+            }),
 
-                radio: function <K extends FormSaverFieldName<TValues>>(
-                    name: K,
-                    optionValue: NonNullable<TValues[K]>
-                ) {
-                    return {
-                        name: name,
-                        value: valueToSelectValue(optionValue as FormSaverValue),
-                        checked: Object.is(values[name], optionValue),
-                        onChange: function (event: React.ChangeEvent<HTMLInputElement>) {
-                            if (event.target.checked) {
-                                setValue(name, optionValue as TValues[K])
-                            }
-                        }
-                    }
-                },
-
-                select: function <K extends FormSaverFieldName<TValues>>(name: K) {
-                    return {
-                        name: name,
-                        value: valueToSelectValue(values[name]),
-                        onChange: function (event: React.ChangeEvent<HTMLSelectElement>) {
-                            setValue(name, event.target.value as TValues[K])
-                        }
-                    }
-                },
-
-                multiSelect: function <K extends FormSaverFieldName<TValues>>(name: K) {
-                    return {
-                        name: name,
-                        multiple: true as const,
-                        value: Array.isArray(values[name])
-                            ? (values[name] as Array<string | number | boolean | null>).map(
-                                  function (item) {
-                                      return String(item)
-                                  }
-                              )
-                            : [],
-                        onChange: function (event: React.ChangeEvent<HTMLSelectElement>) {
-                            setValue(name, getMultiSelectValues(event.target) as TValues[K])
-                        }
+            radio: <K extends FormSaverFieldName<TValues>>(
+                name: K,
+                optionValue: NonNullable<TValues[K]>
+            ) => ({
+                name,
+                value: valueToSelectValue(optionValue),
+                checked: Object.is(values[name], optionValue),
+                onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                    if (event.target.checked) {
+                        setValue(name, optionValue)
                     }
                 }
-            }
-        },
+            }),
+
+            select: <K extends FormSaverFieldName<TValues>>(name: K) => ({
+                name,
+                value: valueToSelectValue(values[name]),
+                onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+                    setValue(name, event.target.value as TValues[K])
+                }
+            }),
+
+            multiSelect: <K extends FormSaverFieldName<TValues>>(name: K) => ({
+                name,
+                multiple: true,
+                value: valueToMultiSelectValue(values[name]),
+                onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+                    setValue(name, getMultiSelectValues(event.target) as TValues[K])
+                }
+            })
+        }),
         [setValue, values]
     )
 
     return useMemo<UseFormSaverResult<TValues>>(
-        function () {
-            return {
-                values: values,
-                setValue: setValue,
-                setValues: setValues,
-                replaceValues: replaceValues,
-                resetValues: resetValues,
-                clearStoredValues: clearStoredValues,
-                saveNow: saveNow,
-                hasRestored: hasRestored,
-                restoredAt: restoredAt,
-                lastSavedAt: lastSavedAt,
-                isStorageAvailable: isStorageAvailable,
-                bind: bind
-            }
-        },
+        () => ({
+            values,
+            setValue,
+            setValues,
+            replaceValues,
+            resetValues,
+            clearStoredValues,
+            saveNow,
+            hasRestored,
+            restoredAt,
+            lastSavedAt,
+            isStorageAvailable,
+            bind
+        }),
         [
             values,
             setValue,

@@ -1,4 +1,4 @@
-import type React from 'react'
+import type { ChangeEventHandler } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
 
@@ -62,7 +62,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
     ) => {
         name: K
         value: string
-        onChange: React.ChangeEventHandler<HTMLInputElement>
+        onChange: ChangeEventHandler<HTMLInputElement>
     }
 
     textarea: <K extends FormSaverFieldName<TValues>>(
@@ -70,7 +70,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
     ) => {
         name: K
         value: string
-        onChange: React.ChangeEventHandler<HTMLTextAreaElement>
+        onChange: ChangeEventHandler<HTMLTextAreaElement>
     }
 
     checkbox: <K extends FormSaverFieldName<TValues>>(
@@ -78,7 +78,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
     ) => {
         name: K
         checked: boolean
-        onChange: React.ChangeEventHandler<HTMLInputElement>
+        onChange: ChangeEventHandler<HTMLInputElement>
     }
 
     radio: <K extends FormSaverFieldName<TValues>>(
@@ -88,7 +88,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         value: string | number | readonly string[]
         checked: boolean
-        onChange: React.ChangeEventHandler<HTMLInputElement>
+        onChange: ChangeEventHandler<HTMLInputElement>
     }
 
     select: <K extends FormSaverFieldName<TValues>>(
@@ -96,7 +96,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
     ) => {
         name: K
         value: string | number | readonly string[]
-        onChange: React.ChangeEventHandler<HTMLSelectElement>
+        onChange: ChangeEventHandler<HTMLSelectElement>
     }
 
     multiSelect: <K extends FormSaverFieldName<TValues>>(
@@ -105,7 +105,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         multiple: true
         value: readonly string[]
-        onChange: React.ChangeEventHandler<HTMLSelectElement>
+        onChange: ChangeEventHandler<HTMLSelectElement>
     }
 }
 

@@ -46,41 +46,41 @@ class MemoryStorage implements Storage {
     }
 }
 
-function installBrowserStorage(): { localStorage: Storage; sessionStorage: Storage } {
+const installBrowserStorage = (): { localStorage: Storage; sessionStorage: Storage } => {
     const localStorage = new MemoryStorage()
     const sessionStorage = new MemoryStorage()
 
     vi.stubGlobal('window', {
-        localStorage: localStorage,
-        sessionStorage: sessionStorage
+        localStorage,
+        sessionStorage
     })
 
-    return { localStorage: localStorage, sessionStorage: sessionStorage }
+    return { localStorage, sessionStorage }
 }
 
-function readRawStorageJson(storageKey: string, storage: Storage): unknown {
+const readRawStorageJson = (storageKey: string, storage: Storage): unknown => {
     const raw = storage.getItem(storageKey)
 
     return raw ? JSON.parse(raw) : null
 }
 
-describe('storage helper', function () {
+describe('storage helper', () => {
     let localStorage: Storage
     let sessionStorage: Storage
 
-    beforeEach(function () {
+    beforeEach(() => {
         const storages = installBrowserStorage()
 
         localStorage = storages.localStorage
         sessionStorage = storages.sessionStorage
     })
 
-    it('reports available browser storage in the test browser environment', function () {
+    it('reports available browser storage in the test browser environment', () => {
         expect(isStorageAvailable('localStorage')).toBe(true)
         expect(isStorageAvailable('sessionStorage')).toBe(true)
     })
 
-    it('returns null or false when browser storage is unavailable', function () {
+    it('returns null or false when browser storage is unavailable', () => {
         vi.unstubAllGlobals()
 
         expect(getStorage()).toBeNull()
@@ -88,13 +88,13 @@ describe('storage helper', function () {
         expect(readStoredForm<TestValues>('settings')).toBeNull()
         expect(writeStoredForm<TestValues>('settings', { query: 'ignored' })).toBeNull()
 
-        expect(function () {
+        expect(() => {
             removeStoredForm('settings')
             clearStorageKeys('settings:')
         }).not.toThrow()
     })
 
-    it('writes and reads one JSON envelope with values and metadata', function () {
+    it('writes and reads one JSON envelope with values and metadata', () => {
         const saved = writeStoredForm<TestValues>(
             'settings',
             {
@@ -105,9 +105,7 @@ describe('storage helper', function () {
             },
             {
                 version: 'react-v1',
-                now: function () {
-                    return 123456
-                }
+                now: () => 123456
             }
         )
 
@@ -128,7 +126,7 @@ describe('storage helper', function () {
         expect(readRawStorageJson('settings', localStorage)).toEqual(saved)
     })
 
-    it('returns null for missing, invalid, or unsupported stored data', function () {
+    it('returns null for missing, invalid, or unsupported stored data', () => {
         expect(readStoredForm<TestValues>('missing')).toBeNull()
 
         localStorage.setItem('invalid-json', '{')
@@ -144,7 +142,7 @@ describe('storage helper', function () {
         expect(readStoredForm<TestValues>('invalid-envelope')).toBeNull()
     })
 
-    it('preserves unknown keys by default when saving partial values', function () {
+    it('preserves unknown keys by default when saving partial values', () => {
         writeStoredForm<TestValues>(
             'shared-form',
             {
@@ -154,9 +152,7 @@ describe('storage helper', function () {
                 tags: ['a']
             },
             {
-                now: function () {
-                    return 100
-                }
+                now: () => 100
             }
         )
 
@@ -166,9 +162,7 @@ describe('storage helper', function () {
                 query: 'second page'
             },
             {
-                now: function () {
-                    return 200
-                }
+                now: () => 200
             }
         )
 
@@ -185,7 +179,7 @@ describe('storage helper', function () {
         })
     })
 
-    it('can replace stored values instead of preserving unknown keys', function () {
+    it('can replace stored values instead of preserving unknown keys', () => {
         writeStoredForm<TestValues>('shared-form', {
             query: 'first page',
             enabled: true,
@@ -200,9 +194,7 @@ describe('storage helper', function () {
             },
             {
                 mergeUnknownKeys: false,
-                now: function () {
-                    return 300
-                }
+                now: () => 300
             }
         )
 
@@ -216,7 +208,7 @@ describe('storage helper', function () {
         })
     })
 
-    it('deletes a value when the next partial value is undefined', function () {
+    it('deletes a value when the next partial value is undefined', () => {
         writeStoredForm<TestValues>('settings', {
             query: 'search',
             enabled: true,
@@ -230,9 +222,7 @@ describe('storage helper', function () {
                 query: undefined
             },
             {
-                now: function () {
-                    return 400
-                }
+                now: () => 400
             }
         )
 
@@ -248,7 +238,7 @@ describe('storage helper', function () {
         })
     })
 
-    it('maps values before saving', function () {
+    it('maps values before saving', () => {
         const saved = writeStoredForm<TestValues>(
             'settings',
             {
@@ -258,19 +248,17 @@ describe('storage helper', function () {
                 tags: []
             },
             {
-                mapBeforeSave: function (values) {
-                    return {
-                        ...values,
-                        query: typeof values.query === 'string' ? values.query.trim() : values.query
-                    }
-                }
+                mapBeforeSave: (values) => ({
+                    ...values,
+                    query: typeof values.query === 'string' ? values.query.trim() : values.query
+                })
             }
         )
 
         expect(saved?.values.query).toBe('padded')
     })
 
-    it('supports sessionStorage separately from localStorage', function () {
+    it('supports sessionStorage separately from localStorage', () => {
         writeStoredForm<TestValues>(
             'settings',
             {
@@ -278,9 +266,7 @@ describe('storage helper', function () {
             },
             {
                 storage: 'sessionStorage',
-                now: function () {
-                    return 500
-                }
+                now: () => 500
             }
         )
 
@@ -303,7 +289,7 @@ describe('storage helper', function () {
         })
     })
 
-    it('removes one stored form', function () {
+    it('removes one stored form', () => {
         writeStoredForm<TestValues>('settings', { query: 'to remove' })
 
         removeStoredForm('settings')
@@ -311,7 +297,7 @@ describe('storage helper', function () {
         expect(readStoredForm<TestValues>('settings')).toBeNull()
     })
 
-    it('removes selected value keys from an existing stored envelope', function () {
+    it('removes selected value keys from an existing stored envelope', () => {
         writeStoredForm<TestValues>(
             'settings',
             {
@@ -321,9 +307,7 @@ describe('storage helper', function () {
                 tags: ['remove']
             },
             {
-                now: function () {
-                    return 600
-                }
+                now: () => 600
             }
         )
 
@@ -341,7 +325,7 @@ describe('storage helper', function () {
         expect(readStoredForm<TestValues>('settings')).toEqual(saved)
     })
 
-    it('clears keys by one prefix', function () {
+    it('clears keys by one prefix', () => {
         localStorage.setItem('form:a', '1')
         localStorage.setItem('form:b', '2')
         localStorage.setItem('other:a', '3')
@@ -353,7 +337,7 @@ describe('storage helper', function () {
         expect(localStorage.getItem('other:a')).toBe('3')
     })
 
-    it('clears keys by multiple prefixes', function () {
+    it('clears keys by multiple prefixes', () => {
         localStorage.setItem('form:a', '1')
         localStorage.setItem('settings:a', '2')
         localStorage.setItem('other:a', '3')
