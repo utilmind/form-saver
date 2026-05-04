@@ -42,19 +42,12 @@ function safeParseJson(value: string | null): unknown {
 function normalizeStoredData<TValues extends FormSaverValuesConstraint<TValues>>(
     raw: unknown
 ): StoredFormSaverData<TValues> | null {
-    if (!isPlainObject(raw)) {
-        return null
-    }
-
-    if (
+    return isPlainObject(raw) &&
         isPlainObject(raw.values) &&
         isPlainObject(raw.meta) &&
         typeof raw.meta.savedAt === 'number'
-    ) {
-        return raw as unknown as StoredFormSaverData<TValues>
-    }
-
-    return null
+        ? (raw as unknown as StoredFormSaverData<TValues>)
+        : null
 }
 
 // Merges current form values into existing storage while preserving unknown keys by default.

@@ -1,4 +1,3 @@
-export { useFormSaver } from './useFormSaver'
 export {
     clearStorageKeys,
     getStorage,
@@ -23,3 +22,4 @@ export type {
     UseFormSaverResult,
     WriteStoredFormOptions
 } from './types'
+export { useFormSaver } from './useFormSaver'
