@@ -29,40 +29,40 @@ The React version is designed around controlled form state:
 Basic example:
 
 ```tsx
-import { useFormSaver } from './react/src';
+import { useFormSaver } from "./react/src";
 
 type SettingsForm = {
   search: string;
   enabled: boolean;
-  mode: 'simple' | 'advanced';
+  mode: "simple" | "advanced";
   category: string;
   tags: string[];
   notes: string;
 };
 
 const initialValues: SettingsForm = {
-  search: '',
+  search: "",
   enabled: false,
-  mode: 'simple',
-  category: '',
+  mode: "simple",
+  category: "",
   tags: [],
-  notes: '',
+  notes: "",
 };
 
 export function SettingsPage() {
   const form = useFormSaver<SettingsForm>({
-    storageKey: 'settings-form',
+    storageKey: "settings-form",
     initialValues,
   });
 
   return (
     <form>
-      <input {...form.bind.text('search')} />
+      <input {...form.bind.text("search")} />
       <label>
-        <input type="checkbox" {...form.bind.checkbox('enabled')} />
+        <input type="checkbox" {...form.bind.checkbox("enabled")} />
         Enabled
       </label>
-      <textarea {...form.bind.textarea('notes')} />
+      <textarea {...form.bind.textarea("notes")} />
     </form>
   );
 }
@@ -72,6 +72,15 @@ See [`react/README.md`](./react/README.md) for the React API draft.
 
 The React storage format is intentionally independent from the legacy jQuery plugin storage format.
 
+React module checks:
+
+```bash
+cd react
+npm install
+npm run typecheck
+npm run test:run
+npm run build
+```
 
 ## Demo app
 

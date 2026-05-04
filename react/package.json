@@ -1,32 +1,35 @@
 {
-  "name": "form-saver-react",
-  "version": "0.1.0",
-  "description": "React and TypeScript form state persistence helper for localStorage and sessionStorage.",
-  "private": true,
-  "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+    "name": "form-saver-react",
+    "version": "0.1.0",
+    "description": "React and TypeScript form state persistence helper for localStorage and sessionStorage.",
+    "private": true,
+    "type": "module",
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+        ".": {
+            "types": "./dist/index.d.ts",
+            "import": "./dist/index.js"
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "typecheck": "tsc -p tsconfig.json --noEmit",
+        "format": "prettier --write \"src/**/*.{ts,tsx}\" \"test/**/*.ts\" \"demo/src/**/*.{ts,tsx,css}\" \"package.json\" \"tsconfig.json\" \"vitest.config.ts\" \"demo/package.json\" \"demo/tsconfig.json\" \"demo/vite.config.ts\"",
+        "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"test/**/*.ts\" \"demo/src/**/*.{ts,tsx,css}\" \"package.json\" \"tsconfig.json\" \"vitest.config.ts\" \"demo/package.json\" \"demo/tsconfig.json\" \"demo/vite.config.ts\"",
+        "demo:dev": "npm --prefix demo run dev",
+        "demo:build": "npm --prefix demo run build",
+        "demo:preview": "npm --prefix demo run preview",
+        "test": "vitest test --pool forks --poolOptions.forks.singleFork=true --no-isolate",
+        "test:run": "vitest run test --pool forks --poolOptions.forks.singleFork=true --no-isolate"
+    },
+    "peerDependencies": {
+        "react": ">=18.0.0"
+    },
+    "devDependencies": {
+        "@types/react": ">=18.0.0",
+        "typescript": ">=5.0.0",
+        "prettier": "^3.5.3",
+        "vitest": "^2.1.0"
     }
-  },
-  "scripts": {
-    "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --noEmit",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"demo/src/**/*.{ts,tsx,css}\" \"*.json\" \"demo/*.json\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"demo/src/**/*.{ts,tsx,css}\" \"*.json\" \"demo/*.json\"",
-    "demo:dev": "npm --prefix demo run dev",
-    "demo:build": "npm --prefix demo run build",
-    "demo:preview": "npm --prefix demo run preview"
-  },
-  "peerDependencies": {
-    "react": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@types/react": ">=18.0.0",
-    "typescript": ">=5.0.0",
-    "prettier": "^3.5.3"
-  }
 }

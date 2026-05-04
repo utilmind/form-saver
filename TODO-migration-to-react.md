@@ -66,11 +66,13 @@ The new React implementation lives in `react/`.
 
 The demo app exists now, so the next test step should focus on the storage helper and merge behavior before hook testing.
 
-- [ ] Add unit tests for the storage helper.
-- [ ] Add unit tests for merge behavior with unknown keys.
+- [x] Add unit tests for the storage helper.
+- [x] Add unit tests for merge behavior with unknown keys.
 - [ ] Add hook tests for restore, save, reset, and clear behavior.
 - [ ] Add tests for bind helpers.
-- [ ] Add tests for SSR-safe behavior.
+- [x] Add storage-layer tests for SSR-safe behavior when browser storage is unavailable.
+- [ ] Add hook-level tests for SSR-safe behavior.
+- [ ] Add tests for storage error handling when storage access throws.
 
 ## Phase 6: Demo React application
 
@@ -86,7 +88,9 @@ The demo app exists now, so the next test step should focus on the storage helpe
 - [x] Decide package manager (`npm`, `pnpm`, or `yarn`). Decision: npm, because `react/package-lock.json` is already present.
 - [ ] Add final build configuration.
 - [ ] Add `exports` / `types` fields for package consumers.
-- [ ] Add linting / formatting if desired.
+- [x] Add formatting configuration.
+- [x] Add initial Vitest test configuration.
+- [ ] Add linting if desired.
 - [ ] Add GitHub Actions CI if desired.
 - [ ] Add release notes / changelog.
 
