@@ -14,6 +14,7 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added a Vite demo application under `react/demo/`.
 - Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, and SSR-safe storage behavior.
 - Added ESLint and Prettier configuration for the React module.
+- Added GitHub Actions CI for React module checks and Vite demo build.
 
 ### Changed
 
@@ -23,4 +24,4 @@ This project is currently in early React migration stage. The legacy jQuery plug
 ### Notes
 
 - The React module is not published to npm yet.
-- GitHub Actions CI is intentionally not added for now; local checks are enough while the project is private/unpublished.
+- GitHub Actions CI is used only for automated checks. It does not deploy the project and does not publish anything to npm.

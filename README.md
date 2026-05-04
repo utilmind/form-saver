@@ -85,6 +85,9 @@ npm run typecheck
 npm run build
 ```
 
+The repository also includes a GitHub Actions workflow at `.github/workflows/react-ci.yml`.
+It runs the same React checks automatically on pushes and pull requests, and also builds the Vite demo app.
+
 ## Demo app
 
 A small Vite demo is available under `react/demo/` for manual testing of the React hook.

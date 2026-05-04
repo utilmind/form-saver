@@ -91,7 +91,8 @@ The demo app exists now, so the next test step should focus on the storage helpe
 - [x] Add formatting configuration.
 - [x] Add initial Vitest test configuration.
 - [x] Add linting for the React module.
-- [x] Decide whether GitHub Actions CI is needed. Decision: not needed for now because the project is not deployed or published.
+- [x] Decide whether GitHub Actions CI is needed. Decision: yes, for automated checks and learning; no deploy or npm publishing is attached to the workflow.
+- [x] Add GitHub Actions CI for React module checks and demo build.
 - [x] Add release notes / changelog.
 
 ## Open questions
