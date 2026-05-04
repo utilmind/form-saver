@@ -75,7 +75,7 @@ export const getStorage = (storageName: BrowserStorageName = 'localStorage'): St
 // Checks whether storage can actually be written to, not just whether it exists.
 export const isStorageAvailable = (storageName: BrowserStorageName = 'localStorage'): boolean => {
     const storage = getWindowStorage(storageName)
-    const testKey = '__form_saver_storage_test__'
+    const testKey = '_ls_test_' // localStorage test
 
     if (!storage) {
         return false
