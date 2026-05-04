@@ -90,9 +90,9 @@ The demo app exists now, so the next test step should focus on the storage helpe
 - [ ] Add `exports` / `types` fields for package consumers.
 - [x] Add formatting configuration.
 - [x] Add initial Vitest test configuration.
-- [ ] Add linting if desired.
-- [ ] Add GitHub Actions CI if desired.
-- [ ] Add release notes / changelog.
+- [x] Add linting for the React module.
+- [x] Decide whether GitHub Actions CI is needed. Decision: not needed for now because the project is not deployed or published.
+- [x] Add release notes / changelog.
 
 ## Open questions
 

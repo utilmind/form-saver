@@ -20,8 +20,10 @@ This directory currently contains an early module draft.
 ```bash
 cd react
 npm install
-npm run typecheck
+npm run format:check
+npm run lint
 npm run test:run
+npm run typecheck
 npm run build
 ```
 
@@ -102,6 +104,27 @@ export function SettingsForm() {
     )
 }
 ```
+
+
+## Code quality
+
+The React module uses:
+
+- Prettier for formatting;
+- ESLint for TypeScript/React correctness checks;
+- Vitest for unit tests.
+
+Run all local checks from the `react/` directory:
+
+```bash
+npm run format:check
+npm run lint
+npm run test:run
+npm run typecheck
+npm run build
+```
+
+Use `npm run lint:fix` for auto-fixable lint issues and `npm run format` for formatting.
 
 ## Tests
 

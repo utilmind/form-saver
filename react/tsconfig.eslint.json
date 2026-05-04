@@ -1,0 +1,20 @@
+{
+    "extends": "./tsconfig.json",
+    "compilerOptions": {
+        "noEmit": true,
+        "rootDir": ".",
+        "paths": {
+            "form-saver-react": ["./src/index.ts"]
+        }
+    },
+    "include": [
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "test/**/*.ts",
+        "demo/src/**/*.ts",
+        "demo/src/**/*.tsx",
+        "demo/src/types/**/*.d.ts",
+        "demo/vite.config.ts",
+        "vitest.config.ts"
+    ]
+}

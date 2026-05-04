@@ -14,6 +14,7 @@ The React module is the current direction of the project. The jQuery plugin is p
 The React migration is in progress.
 
 See [`TODO-migration-to-react.md`](./TODO-migration-to-react.md) for the full migration checklist.
+See [`CHANGELOG.md`](./CHANGELOG.md) for release notes.
 
 ## React module
 
@@ -77,8 +78,10 @@ React module checks:
 ```bash
 cd react
 npm install
-npm run typecheck
+npm run format:check
+npm run lint
 npm run test:run
+npm run typecheck
 npm run build
 ```
 
