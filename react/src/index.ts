@@ -1,4 +1,4 @@
-export { useFormSaver } from './useFormSaver';
+export { useFormSaver } from './useFormSaver'
 export {
     clearStorageKeys,
     getStorage,
@@ -6,8 +6,8 @@ export {
     readStoredForm,
     removeStoredForm,
     removeStoredValueKeys,
-    writeStoredForm,
-} from './storage';
+    writeStoredForm
+} from './storage'
 export type {
     BrowserStorageName,
     FormSaverFieldName,
@@ -21,5 +21,5 @@ export type {
     UseFormSaverBinders,
     UseFormSaverOptions,
     UseFormSaverResult,
-    WriteStoredFormOptions,
-} from './types';
+    WriteStoredFormOptions
+} from './types'
