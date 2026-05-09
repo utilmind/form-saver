@@ -97,11 +97,9 @@ export const readStoredForm = <TValues extends FormSaverValuesConstraint<TValues
 ): StoredFormSaverData<TValues> | null => {
     const storage = getWindowStorage(options.storage ?? 'localStorage')
 
-    if (!storage || !storageKey) {
-        return null
-    }
-
-    return normalizeStoredData<TValues>(safeParseJson(storage.getItem(storageKey)))
+    return storage && storageKey
+        ? normalizeStoredData<TValues>(safeParseJson(storage.getItem(storageKey)))
+        : null
 }
 
 // Writes a form envelope and returns the exact data that was persisted.
