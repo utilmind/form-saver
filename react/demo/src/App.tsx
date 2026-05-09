@@ -31,16 +31,20 @@ const readSavedJson = (): string => {
         return 'Browser storage is not available during server rendering.'
     }
 
-    const raw = window.localStorage.getItem(STORAGE_KEY)
-
-    if (!raw) {
-        return 'Nothing saved yet.'
-    }
-
     try {
-        return JSON.stringify(JSON.parse(raw) as unknown, null, 2)
+        const raw = window.localStorage.getItem(STORAGE_KEY)
+
+        if (!raw) {
+            return 'Nothing saved yet.'
+        }
+
+        try {
+            return JSON.stringify(JSON.parse(raw) as unknown, null, 2)
+        } catch {
+            return raw
+        }
     } catch {
-        return raw
+        return 'Browser storage exists but cannot be read in this context.'
     }
 }
 
@@ -72,12 +76,8 @@ export const App = () => {
             return 'Restoring saved values...'
         }
 
-        if (!form.isStorageAvailable) {
-            return 'Storage is not available in this browser context.'
-        }
-
         return 'Ready. Change any field and the state will be saved automatically.'
-    }, [form.hasRestored, form.isStorageAvailable])
+    }, [form.hasRestored])
 
     const handleResultsPerPageChange = useCallback(
         (event: ChangeEvent<HTMLInputElement>): void => {

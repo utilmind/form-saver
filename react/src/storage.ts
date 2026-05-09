@@ -8,17 +8,19 @@ import type {
     WriteStoredFormOptions
 } from './types'
 
+const DEF_STORAGE = 'localStorage' as const // alternative is 'sessionStorage', but localStorage is more commonly used for form saving
+
 // Returns browser storage only on the client. This keeps the module safe for SSR.
 const getWindowStorage = (storageName: BrowserStorageName): Storage | null => {
-    if (typeof window === 'undefined') {
-        return null
+    if (typeof window !== 'undefined') {
+        try {
+            // Access might throw an error if cookies/storage are blocked
+            return window[storageName]
+        } catch {
+            // return null below
+        }
     }
-
-    try {
-        return window[storageName]
-    } catch {
-        return null
-    }
+    return null
 }
 
 const isPlainObject = (value: unknown): value is Record<string, unknown> =>
@@ -26,15 +28,14 @@ const isPlainObject = (value: unknown): value is Record<string, unknown> =>
 
 // Parses stored JSON without throwing, because storage may contain stale or invalid data.
 const safeParseJson = (value: string | null): unknown => {
-    if (!value) {
-        return null
+    if (value) {
+        try {
+            return JSON.parse(value)
+        } catch {
+            // return null below
+        }
     }
-
-    try {
-        return JSON.parse(value)
-    } catch {
-        return null
-    }
+    return null
 }
 
 // Accepts only the React FormSaver envelope format. Legacy compatibility is intentionally not supported.
@@ -69,37 +70,23 @@ const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
     return result
 }
 
-export const getStorage = (storageName: BrowserStorageName = 'localStorage'): Storage | null =>
+export const getStorage = (storageName: BrowserStorageName = DEF_STORAGE): Storage | null =>
     getWindowStorage(storageName)
-
-// Checks whether storage can actually be written to, not just whether it exists.
-export const isStorageAvailable = (storageName: BrowserStorageName = 'localStorage'): boolean => {
-    const storage = getWindowStorage(storageName)
-    const testKey = '_ls_tst_' // localStorage test
-
-    if (!storage) {
-        return false
-    }
-
-    try {
-        storage.setItem(testKey, testKey)
-        storage.removeItem(testKey)
-        return true
-    } catch {
-        return false
-    }
-}
 
 // Reads and validates one stored form envelope.
 export const readStoredForm = <TValues extends FormSaverValuesConstraint<TValues>>(
     storageKey: string,
     options: ReadStoredFormOptions = {}
 ): StoredFormSaverData<TValues> | null => {
-    const storage = getWindowStorage(options.storage ?? 'localStorage')
-
-    return storage && storageKey
-        ? normalizeStoredData<TValues>(safeParseJson(storage.getItem(storageKey)))
-        : null
+    const storage = getWindowStorage(options.storage ?? DEF_STORAGE)
+    if (storage && storageKey) {
+        try {
+            return normalizeStoredData<TValues>(safeParseJson(storage.getItem(storageKey)))
+        } catch {
+            // return null below
+        }
+    }
+    return null
 }
 
 // Writes a form envelope and returns the exact data that was persisted.
@@ -108,55 +95,59 @@ export const writeStoredForm = <TValues extends FormSaverValuesConstraint<TValue
     values: Partial<TValues>,
     options: WriteStoredFormOptions<TValues> = {}
 ): StoredFormSaverData<TValues> | null => {
-    const storage = getWindowStorage(options.storage ?? 'localStorage')
-    const now = options.now ?? Date.now
-    const existing = readStoredForm<TValues>(storageKey, options)
-    const valuesToSave = options.mapBeforeSave ? options.mapBeforeSave(values) : values
+    const storage = getWindowStorage(options.storage ?? DEF_STORAGE)
+    if (storage && storageKey) {
+        const now = options.now ?? Date.now
+        const existing = readStoredForm<TValues>(storageKey, options)
+        const valuesToSave = options.mapBeforeSave ? options.mapBeforeSave(values) : values
+        const meta: FormSaverMeta = {
+            savedAt: now()
+        }
 
-    if (!storage || !storageKey) {
-        return null
+        if (options.version !== undefined) {
+            meta.version = options.version
+        }
+
+        const data: StoredFormSaverData<TValues> = {
+            values: mergeValueObjects<TValues>(
+                existing ? existing.values : {},
+                valuesToSave,
+                options.mergeUnknownKeys !== false
+            ),
+            meta
+        }
+
+        try {
+            storage.setItem(storageKey, JSON.stringify(data))
+            return data
+        } catch {
+            // return null below
+        }
     }
-
-    const meta: FormSaverMeta = {
-        savedAt: now()
-    }
-
-    if (options.version !== undefined) {
-        meta.version = options.version
-    }
-
-    const data: StoredFormSaverData<TValues> = {
-        values: mergeValueObjects<TValues>(
-            existing ? existing.values : {},
-            valuesToSave,
-            options.mergeUnknownKeys !== false
-        ),
-        meta
-    }
-
-    storage.setItem(storageKey, JSON.stringify(data))
-    return data
+    return null
 }
 
 export const removeStoredForm = (
     storageKey: string,
-    storageName: BrowserStorageName = 'localStorage'
+    storageName: BrowserStorageName = DEF_STORAGE
 ): void => {
     const storage = getWindowStorage(storageName)
-
     if (storage && storageKey) {
-        storage.removeItem(storageKey)
+        try {
+            storage.removeItem(storageKey)
+        } catch {
+            // Ignore storage access errors. Some browser contexts expose Storage but block operations.
+        }
     }
 }
 
 export const removeStoredValueKeys = <TValues extends FormSaverValuesConstraint<TValues>>(
     storageKey: string,
     keysToRemove: Array<FormSaverFieldName<TValues>>,
-    storageName: BrowserStorageName = 'localStorage'
+    storageName: BrowserStorageName = DEF_STORAGE
 ): StoredFormSaverData<TValues> | null => {
     const existing = readStoredForm<TValues>(storageKey, { storage: storageName })
     const storage = getWindowStorage(storageName)
-
     if (!existing || !storage) {
         return existing
     }
@@ -165,29 +156,36 @@ export const removeStoredValueKeys = <TValues extends FormSaverValuesConstraint<
         delete existing.values[key]
     })
 
-    storage.setItem(storageKey, JSON.stringify(existing))
-    return existing
+    try {
+        storage.setItem(storageKey, JSON.stringify(existing))
+        return existing
+    } catch {
+        return null
+    }
 }
 
 // Removes all storage records whose keys start with one of the provided prefixes.
 export const clearStorageKeys = (
     keyPrefix: string | string[],
-    storageName: BrowserStorageName = 'localStorage'
+    storageName: BrowserStorageName = DEF_STORAGE
 ): void => {
     const storage = getWindowStorage(storageName)
-
     if (!storage || keyPrefix.length === 0) {
         return
     }
 
-    const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
-    const keysToRemove = Array.from({ length: storage.length }, (_value, index) =>
-        storage.key(index)
-    )
-        .filter((key): key is string => Boolean(key))
-        .filter((key) => prefixes.some((prefix) => prefix.length > 0 && key.startsWith(prefix)))
+    try {
+        const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
+        const keysToRemove = Array.from({ length: storage.length }, (_value, index) =>
+            storage.key(index)
+        )
+            .filter((key): key is string => Boolean(key))
+            .filter((key) => prefixes.some((prefix) => prefix.length > 0 && key.startsWith(prefix)))
 
-    keysToRemove.forEach((key) => {
-        storage.removeItem(key)
-    })
+        keysToRemove.forEach((key) => {
+            storage.removeItem(key)
+        })
+    } catch {
+        // Ignore storage access errors. Clearing is best-effort.
+    }
 }

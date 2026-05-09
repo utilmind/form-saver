@@ -120,6 +120,5 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     hasRestored: boolean
     restoredAt?: number
     lastSavedAt?: number
-    isStorageAvailable: boolean
     bind: UseFormSaverBinders<TValues>
 }

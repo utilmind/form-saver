@@ -1,7 +1,6 @@
 export {
     clearStorageKeys,
     getStorage,
-    isStorageAvailable,
     readStoredForm,
     removeStoredForm,
     removeStoredValueKeys,

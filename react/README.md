@@ -214,7 +214,7 @@ useFormSaver<TValues>({
 | `mapAfterLoad`       | `undefined`      | Transform or reject values after loading them from storage.                                                                                                                                                 |
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |
 | `onSave`             | `undefined`      | Called after values were saved.                                                                                                                                                                             |
-| `onError`            | `undefined`      | Called when storage access, parsing, or saving fails.                                                                                                                                                       |
+| `onError`            | `undefined`      | Called when restore/save transforms or callbacks throw. Storage access failures are ignored by the storage helpers.                                                                                         |
 
 ### Return value
 
@@ -230,7 +230,6 @@ useFormSaver<TValues>({
   hasRestored,
   restoredAt,
   lastSavedAt,
-  isStorageAvailable,
   bind,
 }
 ```

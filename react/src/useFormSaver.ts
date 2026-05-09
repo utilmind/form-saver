@@ -8,12 +8,7 @@ import {
     useState
 } from 'react'
 
-import {
-    isStorageAvailable as checkStorageAvailable,
-    readStoredForm,
-    removeStoredForm,
-    writeStoredForm
-} from './storage'
+import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
     FormSaverFieldName,
     FormSaverValue,
@@ -123,7 +118,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
-    const [isStorageAvailable, setIsStorageAvailable] = useState(false)
     const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
     const mapAfterLoadRef = useLatestRef(mapAfterLoad)
     const onRestoreRef = useLatestRef(onRestore)
@@ -148,8 +142,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         }
 
         try {
-            setIsStorageAvailable(checkStorageAvailable(storage))
-
             const stored = readStoredForm<TValues>(storageKey, { storage })
 
             if (!stored) {
@@ -205,11 +197,9 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
                 if (saved) {
                     setLastSavedAt(saved.meta.savedAt)
-                    setIsStorageAvailable(true)
                     onSaveRef.current?.(saved.values, saved.meta)
                 }
             } catch (error) {
-                setIsStorageAvailable(false)
                 onErrorRef.current?.(error)
             }
         },
@@ -367,7 +357,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             hasRestored,
             restoredAt,
             lastSavedAt,
-            isStorageAvailable,
             bind
         }),
         [
@@ -381,7 +370,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             hasRestored,
             restoredAt,
             lastSavedAt,
-            isStorageAvailable,
             bind
         ]
     )

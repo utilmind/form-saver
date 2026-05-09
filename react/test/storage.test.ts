@@ -3,7 +3,6 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
     clearStorageKeys,
     getStorage,
-    isStorageAvailable,
     readStoredForm,
     removeStoredForm,
     removeStoredValueKeys,
@@ -16,6 +15,32 @@ interface TestValues {
     count: number
     tags: string[]
     notes?: string
+}
+
+class BlockingStorage implements Storage {
+    get length(): number {
+        throw new Error('Storage operation blocked')
+    }
+
+    clear(): void {
+        throw new Error('Storage operation blocked')
+    }
+
+    getItem(): string | null {
+        throw new Error('Storage operation blocked')
+    }
+
+    key(): string | null {
+        throw new Error('Storage operation blocked')
+    }
+
+    removeItem(): void {
+        throw new Error('Storage operation blocked')
+    }
+
+    setItem(): void {
+        throw new Error('Storage operation blocked')
+    }
 }
 
 class MemoryStorage implements Storage {
@@ -75,21 +100,31 @@ describe('storage helper', () => {
         sessionStorage = storages.sessionStorage
     })
 
-    it('reports available browser storage in the test browser environment', () => {
-        expect(isStorageAvailable('localStorage')).toBe(true)
-        expect(isStorageAvailable('sessionStorage')).toBe(true)
-    })
-
-    it('returns null or false when browser storage is unavailable', () => {
+    it('returns null and ignores writes/removals when browser storage is unavailable', () => {
         vi.unstubAllGlobals()
 
         expect(getStorage()).toBeNull()
-        expect(isStorageAvailable()).toBe(false)
         expect(readStoredForm<TestValues>('settings')).toBeNull()
         expect(writeStoredForm<TestValues>('settings', { query: 'ignored' })).toBeNull()
 
         expect(() => {
             removeStoredForm('settings')
+            clearStorageKeys('settings:')
+        }).not.toThrow()
+    })
+
+    it('ignores storage operation errors when browser storage exists but is blocked', () => {
+        vi.stubGlobal('window', {
+            localStorage: new BlockingStorage(),
+            sessionStorage: new BlockingStorage()
+        })
+
+        expect(readStoredForm<TestValues>('settings')).toBeNull()
+        expect(writeStoredForm<TestValues>('settings', { query: 'ignored' })).toBeNull()
+
+        expect(() => {
+            removeStoredForm('settings')
+            removeStoredValueKeys<TestValues>('settings', ['query'])
             clearStorageKeys('settings:')
         }).not.toThrow()
     })
