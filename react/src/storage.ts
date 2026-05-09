@@ -1,3 +1,5 @@
+// Read/Write/Clear functions will return null if storage is unavailable or an error occurs.
+
 import type {
     BrowserStorageName,
     FormSaverFieldName,
