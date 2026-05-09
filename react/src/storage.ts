@@ -184,21 +184,21 @@ export const clearStorageKeys = (
     storageName: BrowserStorageName = DEF_STORAGE
 ): void => {
     const storage = getWindowStorage(storageName)
-    const prefixes = (Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]).filter(
-        (prefix) => prefix.length > 0
-    )
-
-    if (storage && prefixes.length > 0) {
+    if (storage && keyPrefix.length) {
         try {
-            const keysToRemove = Array.from({ length: storage.length }, (_value, index) =>
-                storage.key(index)
-            )
-                .filter((key): key is string => Boolean(key))
-                .filter((key) => prefixes.some((prefix) => key.startsWith(prefix)))
+            const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
 
-            keysToRemove.forEach((key) => {
-                storage.removeItem(key)
-            })
+            // Iterate backwards to safely remove items by index without creating an intermediate array of keys. (Speed-optimized.)
+            for (let i = storage.length - 1; i >= 0; --i) {
+                const key = storage.key(i)
+                if (key) {
+                    // Use some() for early exit once a prefix matches
+                    const matches = prefixes.some((p) => p.length > 0 && key.startsWith(p))
+                    if (matches) {
+                        storage.removeItem(key)
+                    }
+                }
+            }
         } catch {
             // Ignore storage access errors. Clearing is best-effort.
         }
