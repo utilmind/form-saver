@@ -6,12 +6,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-if not exist "..\packs" mkdir "..\packs"
+if not exist "..\_packs" mkdir "..\_packs"
 
-call npm pack --pack-destination "..\packs"
+call npm pack --pack-destination "..\_packs"
 if errorlevel 1 (
     echo npm pack failed.
     exit /b 1
 )
 
-echo Done. Use distrubution package from "..\packs\".
+echo Done. Use distrubution package from "..\_packs\".
