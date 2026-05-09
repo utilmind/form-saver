@@ -29,10 +29,56 @@ npm run build
 
 The package is currently marked as `private: true` until the final API is reviewed.
 
+## Using it from another local project
+
+The demo app intentionally imports the library from `src/` through a Vite alias so that local changes are visible immediately during library development. A real application should usually consume the package entry point instead, because that is the same path npm users will eventually use.
+
+For a separate React or Next.js project, the closest workflow to a future npm install is:
+
+```bash
+cd react
+npm run build
+npm pack
+```
+
+Then install the generated tarball in the application:
+
+```bash
+npm install ../path/to/form-saver-react-0.1.0.tgz
+```
+
+After that, import from the package name:
+
+```tsx
+import { useFormSaver } from 'form-saver-react'
+```
+
+For active local development, a path dependency is also possible:
+
+```json
+{
+    "dependencies": {
+        "form-saver-react": "file:../form-saver/react"
+    }
+}
+```
+
+With this mode, rebuild the library before testing package-output changes in the consuming app, because the package entry point points at `dist/`. Do not copy the demo alias into a real application unless you intentionally want the app bundler to compile this package from TypeScript source.
+
+In a Next.js App Router project, any component that calls `useFormSaver` must be a Client Component:
+
+```tsx
+'use client'
+
+import { useFormSaver } from 'form-saver-react'
+```
+
+The storage helpers are SSR-safe, but the hook is still a React client hook because it uses client-side state/effects and browser storage.
+
 ## Basic usage
 
 ```tsx
-import { useFormSaver } from './src'
+import { useFormSaver } from 'form-saver-react'
 
 type SettingsForm = {
     query: string
