@@ -170,22 +170,22 @@ export const clearStorageKeys = (
     storageName: BrowserStorageName = DEF_STORAGE
 ): void => {
     const storage = getWindowStorage(storageName)
-    if (!storage || keyPrefix.length === 0) {
-        return
-    }
+    if (storage && keyPrefix.length === 0) {
+        try {
+            const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
+            const keysToRemove = Array.from({ length: storage.length }, (_value, index) =>
+                storage.key(index)
+            )
+                .filter((key): key is string => Boolean(key))
+                .filter((key) =>
+                    prefixes.some((prefix) => prefix.length > 0 && key.startsWith(prefix))
+                )
 
-    try {
-        const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
-        const keysToRemove = Array.from({ length: storage.length }, (_value, index) =>
-            storage.key(index)
-        )
-            .filter((key): key is string => Boolean(key))
-            .filter((key) => prefixes.some((prefix) => prefix.length > 0 && key.startsWith(prefix)))
-
-        keysToRemove.forEach((key) => {
-            storage.removeItem(key)
-        })
-    } catch {
-        // Ignore storage access errors. Clearing is best-effort.
+            keysToRemove.forEach((key) => {
+                storage.removeItem(key)
+            })
+        } catch {
+            // Ignore storage access errors. Clearing is best-effort.
+        }
     }
 }
