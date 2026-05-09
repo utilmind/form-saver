@@ -1,3 +1,18 @@
+/**
+ * Main React hook implementation for persisted controlled form state.
+ *
+ * useFormSaver restores saved values from browser storage after mount, exposes a
+ * typed set of native input binders, and writes changes back with optional
+ * debouncing. The hook is designed to be safe for server rendering by avoiding
+ * browser storage access during render.
+ *
+ * Developer notes:
+ * - Keep storage access inside effects or explicit callbacks, never during SSR.
+ * - Ref wrappers are used so callback options stay current without forcing
+ *   restore/save effects to rerun on every render.
+ * - Changes to binder behavior should be checked against the demo and tests.
+ */
+
 import {
     type ChangeEvent,
     type MutableRefObject,

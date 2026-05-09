@@ -1,3 +1,12 @@
+/**
+ * Public package entry point.
+ *
+ * This barrel file defines the import surface that consumers use from
+ * "form-saver-react". Keep exports intentional and stable: moving or removing
+ * items here is a public API change even when the underlying implementation
+ * remains available internally.
+ */
+
 export {
     clearStorageKeys,
     getStorage,

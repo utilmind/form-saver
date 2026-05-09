@@ -1,3 +1,16 @@
+/**
+ * Demo application for the local development playground.
+ *
+ * This component intentionally exercises the public useFormSaver API across the
+ * supported native form controls: text inputs, checkbox, radio group, select,
+ * multi-select, number input, and textarea. It also shows raw persisted JSON so
+ * storage-format regressions are visible while developing the package.
+ *
+ * Developer notes:
+ * - Treat this file as demo-only code, not part of the published library API.
+ * - Keep the scenarios here aligned with the README examples and storage tests.
+ */
+
 import { useFormSaver } from 'form-saver-react'
 import { type ChangeEvent, useCallback, useMemo, useState } from 'react'
 

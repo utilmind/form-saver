@@ -1,3 +1,12 @@
+/**
+ * Unit tests for the browser-storage persistence helpers.
+ *
+ * These tests use in-memory and intentionally-blocking Storage implementations
+ * to verify normal persistence behavior as well as failure modes that can occur
+ * in real browsers. They are the main safety net for storage envelope changes,
+ * invalid JSON handling, key clearing, and blocked-storage behavior.
+ */
+
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {

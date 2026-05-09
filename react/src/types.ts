@@ -1,3 +1,17 @@
+/**
+ * Public TypeScript types for form-saver-react.
+ *
+ * These declarations describe the persisted storage envelope, hook options,
+ * returned helpers, and the primitive form-value model supported by the package.
+ * Because they are exported from the package entry point, most changes here are
+ * consumer-facing and should be treated as API changes.
+ *
+ * Developer notes:
+ * - Keep this module type-only; do not introduce runtime dependencies here.
+ * - Preserve compatibility between these types and the runtime validation in
+ *   storage.ts.
+ */
+
 import type { ChangeEventHandler } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'

@@ -1,4 +1,16 @@
-// Read/Write/Clear functions will return null if storage is unavailable or an error occurs.
+/**
+ * Browser storage adapter for persisted form state.
+ *
+ * This module owns the serialized storage envelope used by the React hook. All
+ * reads, writes, and deletes are best-effort because localStorage/sessionStorage
+ * may be unavailable during SSR, blocked by browser privacy settings, full, or
+ * contain stale invalid JSON.
+ *
+ * Developer notes:
+ * - Public helpers should not throw for normal browser-storage failures.
+ * - Be careful when changing StoredFormSaverData shape; existing saved forms in
+ *   user browsers may have been written by older versions of the package.
+ */
 
 import type {
     BrowserStorageName,
