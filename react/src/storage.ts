@@ -53,33 +53,36 @@ const safeParseJson = (value: string | null): unknown => {
 const normalizeStoredData = <TValues extends FormSaverValuesConstraint<TValues>>(
     raw: unknown
 ): StoredFormSaverData<TValues> | null => {
-    const r = raw as StoredFormSaverData | null
-    // prettier-ignore
-    return r
-            && typeof r.values === 'object'
-            // We use StoredFormSaverData and esLint thinks that data is valid already, but we need to check meta shape manually, in case of corrupted or stale data.
-            // We only check for the required savedAt field to keep it lightweight.
-            // eslint-disable-next-line
-            && typeof r.meta?.savedAt === 'number'
+    // We cast to a partial shape just for validation to satisfy the linter
+    // raw has type StoredFormSaverData or null, but we need to check its shape manually in case of corrupted or stale data.
+    const r = raw as { values?: object; meta?: { savedAt?: number } } | null
+
+    return r && typeof r.values === 'object' && typeof r.meta?.savedAt === 'number'
         ? (r as unknown as StoredFormSaverData<TValues>)
         : null
 }
 
 // Merges current form values into existing storage while preserving unknown keys by default.
+// Using a manual loop instead of (...) spread to minimize allocations.
 const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
     existingValues: Partial<TValues>,
     nextValues: Partial<TValues>,
     mergeUnknownKeys: boolean
 ): Partial<TValues> => {
-    const result: Partial<TValues> = mergeUnknownKeys ? { ...existingValues } : {}
+    const result: Partial<TValues> = {}
+
+    if (mergeUnknownKeys) {
+        for (const key in existingValues) {
+            result[key] = existingValues[key]
+        }
+    }
 
     for (const key in nextValues) {
-        if (Object.prototype.hasOwnProperty.call(nextValues, key)) {
-            if (nextValues[key] === undefined) {
-                delete result[key]
-            } else {
-                result[key] = nextValues[key]
-            }
+        const val = nextValues[key]
+        if (val === undefined) {
+            delete result[key]
+        } else {
+            result[key] = val
         }
     }
 
