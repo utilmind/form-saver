@@ -168,9 +168,10 @@ export const removeStoredValueKeys = <TValues extends FormSaverValuesConstraint<
         return existing
     }
 
-    keysToRemove.forEach((key) => {
-        delete existing.values[key]
-    })
+    // Manual loop is faster than keysToRemove.forEach() for small/medium arrays.
+    for (let i = 0; i < keysToRemove.length; ++i) {
+        delete existing.values[keysToRemove[i]]
+    }
 
     try {
         storage.setItem(storageKey, JSON.stringify(existing))
