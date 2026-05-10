@@ -70,12 +70,16 @@ const mergeValuesIfChanged = <TValues extends FormSaverValuesConstraint<TValues>
     let nextValues: TValues | null = null
 
     for (const key in patch) {
-        if (
-            Object.prototype.hasOwnProperty.call(patch, key) &&
-            !Object.is(current[key], patch[key])
-        ) {
-            nextValues ??= { ...current }
-            nextValues[key] = patch[key] as TValues[typeof key]
+        const val = patch[key]
+        if (!Object.is(current[key], val)) {
+            if (!nextValues) {
+                nextValues = {} as TValues
+                // Manual copy instead of spread
+                for (const k in current) {
+                    nextValues[k] = current[k]
+                }
+            }
+            nextValues[key] = val as TValues[typeof key]
         }
     }
 
@@ -92,15 +96,21 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     initialValues: TValues,
     restoreUnknownKeys: boolean
 ): Partial<TValues> => {
-    if (restoreUnknownKeys) {
-        return { ...values }
-    }
-
     const result: Partial<TValues> = {}
 
-    for (const key in initialValues) {
-        if (Object.prototype.hasOwnProperty.call(initialValues, key) && values[key] !== undefined) {
+    if (restoreUnknownKeys) {
+        // Avoid { ...values } to skip extra allocation in some engines
+        for (const key in values) {
             result[key] = values[key]
+        }
+        return result
+    }
+
+    // Only pick keys that exist in initialValues
+    for (const key in initialValues) {
+        const val = values[key]
+        if (val !== undefined) {
+            result[key] = val
         }
     }
 
