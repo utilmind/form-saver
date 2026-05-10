@@ -235,7 +235,9 @@ Supported native controls:
 
 The DOM API is intended for **uncontrolled** native controls. Use `defaultValue` and `defaultChecked`, not React-controlled `value` / `checked`, unless you know exactly how your component reconciles DOM values.
 
-For custom React controls or UI-library widgets that do not render native named controls, use the typed `useFormSaver` API and its `bind.*` helpers, or add your own hidden/native input and call `saveNow()` when the custom value changes.
+By default, the DOM API skips password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas.
+
+For custom React controls or UI-library widgets that do not render native named controls, prefer the typed `useFormSaver` API and its `bind.*` helpers, or mirror the value into a real named non-hidden native control and call `saveNow()` when the custom value changes.
 
 ## Code quality
 
@@ -418,7 +420,7 @@ useFormSaverDom({
 }
 ```
 
-By default, password fields are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
+By default, password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
 
 ## TypeScript form types
 

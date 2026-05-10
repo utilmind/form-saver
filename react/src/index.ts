@@ -8,12 +8,14 @@
  */
 
 export type { DomControlOptions } from './domControls'
+//
 export {
     collectDomFormValues,
     getDomFormControls,
     resetDomFormValues,
     restoreDomFormValues
 } from './domControls'
+//
 export {
     clearStorageKeys,
     getStorage,
@@ -22,6 +24,7 @@ export {
     removeStoredValueKeys,
     writeStoredForm
 } from './storage'
+//
 export type {
     BrowserStorageName,
     FormSaverFieldName,

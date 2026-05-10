@@ -10,7 +10,6 @@ import type { FormSaverValue, FormSaverValues } from './types'
 
 const DEF_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
 const DEF_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
-const IGNORE_INPUT_TYPES = ['file', 'image', 'button', 'reset', 'submit'] // we also ignore type="password", but we check password fields additionally. It may be allowed in rare cases, based on options.
 
 export interface DomControlOptions {
     /** Include password fields in saved values. Disabled by default for safety. */
@@ -53,14 +52,24 @@ export const getDomFormControls = (
                 const type = input.type // Browser already returns normalized lowercase type.
 
                 if (
-                    // Don't save values for these input types, which are either non-data or potentially sensitive. This also helps avoid accidentally saving large data blobs from file inputs.
-                    IGNORE_INPUT_TYPES.indexOf(type) === -1 &&
+                    // Readonly fields are intentionally skipped by default to match the original jQuery plugin behavior.
+                    !input.readOnly &&
+                    // Don't save values for these input types, which are either non-data, hidden service state, or potentially sensitive. This also helps avoid accidentally saving large data blobs from file inputs.
+                    type !== 'button' &&
+                    type !== 'file' &&
+                    type !== 'hidden' &&
+                    type !== 'image' &&
+                    type !== 'reset' &&
+                    type !== 'submit' &&
                     // We don't want to store entered passwords either, but maybe there can be some exceptions for non-sensitive data, so we allow including them via options.
                     (type !== 'password' || options.includePasswords)
                 ) {
                     result.push(input)
                 }
-            } else if (tag === 'TEXTAREA' || tag === 'SELECT') {
+            } else if (
+                tag === 'SELECT' ||
+                (tag === 'TEXTAREA' && !(ctrl as HTMLTextAreaElement).readOnly)
+            ) {
                 result.push(ctrl)
             }
         }

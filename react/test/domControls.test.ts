@@ -28,6 +28,7 @@ class FakeInput extends FakeBaseControl {
     public checked: boolean
     public defaultValue: string
     public defaultChecked: boolean
+    public readOnly: boolean
 
     public constructor(
         name: string,
@@ -36,7 +37,8 @@ class FakeInput extends FakeBaseControl {
         checked = false,
         defaultValue = value,
         defaultChecked = checked,
-        ignored = false
+        ignored = false,
+        readOnly = false
     ) {
         super('INPUT', name, ignored)
         this.type = type
@@ -44,17 +46,20 @@ class FakeInput extends FakeBaseControl {
         this.checked = checked
         this.defaultValue = defaultValue
         this.defaultChecked = defaultChecked
+        this.readOnly = readOnly
     }
 }
 
 class FakeTextArea extends FakeBaseControl {
     public value: string
     public defaultValue: string
+    public readOnly: boolean
 
-    public constructor(name: string, value = '', defaultValue = value) {
+    public constructor(name: string, value = '', defaultValue = value, readOnly = false) {
         super('TEXTAREA', name)
         this.value = value
         this.defaultValue = defaultValue
+        this.readOnly = readOnly
     }
 }
 
@@ -149,6 +154,9 @@ describe('DOM control helpers', () => {
                 true
             ),
             new FakeInput('upload', 'file', 'ignored'),
+            new FakeInput('state', 'hidden', 'ignored'),
+            new FakeInput('readonlyTitle', 'text', 'ignored', false, 'ignored', false, false, true),
+            new FakeTextArea('readonlyNotes', 'ignored', 'ignored', true),
             new FakeInput('secret', 'password', 'ignored'),
             new FakeInput('ignored', 'text', 'ignored', false, 'ignored', false, true)
         ])
@@ -184,6 +192,25 @@ describe('DOM control helpers', () => {
             collectDomFormValues(root as unknown as ParentNode, { controlSelector: 'input' })
         ).toEqual({
             title: 'Saved'
+        })
+    })
+
+    it('ignores hidden and readonly controls even with a broad custom selector', () => {
+        const root = new FakeRoot([
+            new FakeInput('state', 'hidden', 'ignored'),
+            new FakeInput('readonlyTitle', 'text', 'ignored', false, 'ignored', false, false, true),
+            new FakeTextArea('readonlyNotes', 'ignored', 'ignored', true),
+            new FakeInput('title', 'text', 'Saved'),
+            new FakeTextArea('notes', 'Saved notes')
+        ])
+
+        expect(
+            collectDomFormValues(root as unknown as ParentNode, {
+                controlSelector: 'input, textarea'
+            })
+        ).toEqual({
+            title: 'Saved',
+            notes: 'Saved notes'
         })
     })
 
