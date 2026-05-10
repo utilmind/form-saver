@@ -124,26 +124,28 @@ const restoreControlValue = (control: SupportedControl, value: FormSaverValue): 
         } else if (type === 'radio') {
             input.checked = input.value === String(value)
         } else {
-            input.value = value === null || value === undefined ? '' : String(value)
+            input.value = value === null ? '' : String(value)
         }
     } else if (tag === 'TEXTAREA') {
-        ;(control as HTMLTextAreaElement).value =
-            value === null || value === undefined ? '' : String(value)
+        ;(control as HTMLTextAreaElement).value = value === null ? '' : String(value)
     } else if (tag === 'SELECT') {
         const select = control as HTMLSelectElement
         if (select.multiple && Array.isArray(value)) {
-            for (let i = 0; i < select.options.length; ++i) {
-                const opt = select.options[i]
-                opt.selected = false
-                for (let j = 0; j < value.length; ++j) {
+            const opts = select.options
+            const vLen = value.length
+            for (let i = 0; i < opts.length; ++i) {
+                const opt = opts[i]
+                let isSelected = false
+                for (let j = 0; j < vLen; ++j) {
                     if (opt.value === String(value[j])) {
-                        opt.selected = true
+                        isSelected = true
                         break
                     }
                 }
+                opt.selected = isSelected
             }
         } else {
-            select.value = value === null || value === undefined ? '' : String(value)
+            select.value = value === null ? '' : String(value)
         }
     }
 }
