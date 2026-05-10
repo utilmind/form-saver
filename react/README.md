@@ -2,7 +2,7 @@
 
 `form-saver-react` is a small React hook package for saving and restoring form/settings state from browser storage.
 
-The package currently provides two public hook APIs:
+The package currently provides two public hook APIs and one wrapper component:
 
 - `useFormSaver` for typed controlled React state.
 - `useFormSaverDom` for jQuery-like auto-binding of uncontrolled native controls inside a DOM scope.
