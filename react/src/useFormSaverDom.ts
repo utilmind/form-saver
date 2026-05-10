@@ -9,7 +9,6 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { DEFAULT_FORM_SAVER_DEBOUNCE_MS, DEFAULT_FORM_SAVER_DOM_SAVE_EVENT } from './constants'
 import {
     collectDomFormValues,
     type DomControlOptions,
@@ -18,6 +17,7 @@ import {
 } from './domControls'
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
+    FormSaverDomSaveEvent,
     FormSaverValues,
     StoredFormSaverData,
     UseFormSaverDomOptions,
@@ -67,8 +67,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         storageKey,
         storage = 'localStorage',
         enabled = true,
-        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
-        saveEvent = DEFAULT_FORM_SAVER_DOM_SAVE_EVENT,
+        debounceMs = 150, // ms
+        saveEvent: FormSaverDomSaveEvent = 'change',
         restoreOnMount = true,
         version,
         mergeUnknownKeys = true,
