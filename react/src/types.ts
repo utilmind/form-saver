@@ -15,6 +15,7 @@
 import type { ChangeEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
+export type FormSaverDomSaveEvent = 'change' | 'input'
 
 export type FormSaverPrimitive = string | number | boolean | null
 export type FormSaverValue = FormSaverPrimitive | FormSaverPrimitive[]
@@ -75,6 +76,7 @@ export interface UseFormSaverDomOptions {
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
+    saveEvent?: FormSaverDomSaveEvent
     restoreOnMount?: boolean
     version?: string | number
     mergeUnknownKeys?: boolean

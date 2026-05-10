@@ -52,7 +52,7 @@ The new React implementation lives in `react/`.
 - [x] Avoid writing initial default values to storage on first mount unless `saveOnMount` is enabled.
 - [x] Fix the demo restore loop caused by non-memoized callback options.
 - [x] Review the hook API against a typical Next.js settings form.
-- [ ] Decide whether the default debounce value should stay at `150ms`.
+- [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; controlled state uses it after React state changes, while DOM mode defaults to browser `change` events and uses debounce only after a save-triggering event.
 
 
 ## Priority Phase: DOM-based auto binding
@@ -67,10 +67,10 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Support text-like inputs, textarea, single select, multi-select, checkbox, checkbox groups, and radio groups.
 - [x] Preserve unknown stored keys by default when saving from a partial DOM scope.
 - [x] Add `useFormSaverDom` hook for attaching FormSaver to a form or container via a React ref.
-- [ ] Add `FormSaverScope` wrapper component on top of `useFormSaverDom`, including an `asChild` mode that does not add an extra DOM element.
+- [x] Add `FormSaverScope` wrapper component on top of `useFormSaverDom`, including an `asChild` mode that does not add an extra DOM element.
 - [x] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStoredValues` helpers to the DOM hook.
 - [ ] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option.
-- [ ] Add a demo section for DOM auto mode.
+- [ ] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
 - [x] Add tests for DOM collect/restore behavior.
 - [ ] Add hook tests for DOM restore/save/reset/clear behavior.
 - [x] Document controlled vs uncontrolled usage clearly.

@@ -8,6 +8,8 @@
  */
 
 export type { DomControlOptions } from './domControls'
+export type { FormSaverScopeProps } from './FormSaverScope'
+export { FormSaverScope } from './FormSaverScope'
 //
 export {
     collectDomFormValues,
@@ -25,8 +27,10 @@ export {
     writeStoredForm
 } from './storage'
 //
+export { DEFAULT_FORM_SAVER_DEBOUNCE_MS, DEFAULT_FORM_SAVER_DOM_SAVE_EVENT } from './constants'
 export type {
     BrowserStorageName,
+    FormSaverDomSaveEvent,
     FormSaverFieldName,
     FormSaverMeta,
     FormSaverPrimitive,

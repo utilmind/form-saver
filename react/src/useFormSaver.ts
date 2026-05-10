@@ -15,6 +15,7 @@
 
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DEFAULT_FORM_SAVER_DEBOUNCE_MS } from './constants'
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
     FormSaverFieldName,
@@ -121,7 +122,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         initialValues,
         storage = 'localStorage',
         enabled = true,
-        debounceMs = 150,
+        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
         saveOnMount = false,
         version,
         mergeUnknownKeys = true,

@@ -6,6 +6,7 @@ The package currently provides two public hook APIs:
 
 - `useFormSaver` for typed controlled React state.
 - `useFormSaverDom` for jQuery-like auto-binding of uncontrolled native controls inside a DOM scope.
+- `FormSaverScope` as a lightweight wrapper component over `useFormSaverDom`.
 
 This package does **not** wrap the legacy jQuery plugin. It provides React/TypeScript APIs built on top of the same core idea: save values into one readable JSON envelope and restore them after reload.
 
@@ -56,7 +57,7 @@ npm install ../path/to/form-saver-react-0.1.0.tgz
 After that, import from the package name:
 
 ```tsx
-import { useFormSaver, useFormSaverDom } from 'form-saver-react'
+import { FormSaverScope, useFormSaver, useFormSaverDom } from 'form-saver-react'
 ```
 
 For active local development, a path dependency is also possible:
@@ -160,7 +161,61 @@ export function SettingsForm() {
 
 ## DOM auto-binding usage
 
-Use `useFormSaverDom` when your form mostly contains ordinary uncontrolled native controls and you do not want to spread bind helpers into every input.
+Use `FormSaverScope` when your form mostly contains ordinary uncontrolled native controls and you do not want to spread bind helpers into every input. This is the most jQuery-like API.
+
+```tsx
+import { FormSaverScope } from 'form-saver-react'
+
+export function SettingsForm() {
+    return (
+        <FormSaverScope asChild storageKey="settings-form">
+            <form>
+                <input name="query" defaultValue="" />
+
+                <label>
+                    <input type="checkbox" name="enabled" defaultChecked={false} />
+                    Enabled
+                </label>
+
+                <label>
+                    <input type="radio" name="mode" value="basic" defaultChecked />
+                    Basic
+                </label>
+
+                <label>
+                    <input type="radio" name="mode" value="advanced" />
+                    Advanced
+                </label>
+
+                <select name="category" defaultValue="">
+                    <option value="">Choose category</option>
+                    <option value="general">General</option>
+                    <option value="advanced">Advanced</option>
+                </select>
+
+                <select name="tags" multiple defaultValue={[]}>
+                    <option value="alpha">Alpha</option>
+                    <option value="beta">Beta</option>
+                    <option value="gamma">Gamma</option>
+                </select>
+
+                <textarea name="notes" defaultValue="" />
+            </form>
+        </FormSaverScope>
+    )
+}
+```
+
+`asChild` means FormSaver does not render an extra DOM element. It clones the only child element and attaches its ref there. Without `asChild`, `FormSaverScope` renders a root element itself:
+
+```tsx
+<FormSaverScope as="form" storageKey="settings-form" className="settings-form">
+    <input name="query" defaultValue="" />
+    <textarea name="notes" defaultValue="" />
+</FormSaverScope>
+```
+
+Use `useFormSaverDom` directly when you need imperative helpers such as `saveNow`, `restoreNow`, `resetValues`, or `clearStoredValues` in the component that renders the form.
 
 ```tsx
 import { useFormSaverDom } from 'form-saver-react'
@@ -216,6 +271,10 @@ export function SettingsForm() {
     )
 }
 ```
+
+By default, DOM mode saves on browser `change` events. For text inputs and textareas this usually means "after editing is committed", commonly when the field loses focus. Checkboxes, radio buttons, and selects fire `change` immediately. If the user types into a focused field and leaves/reloads before blur, FormSaver flushes pending DOM changes on `beforeunload`.
+
+Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In that mode, `debounceMs` controls the delay before writing to storage. The default debounce value is exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS` and is currently `150`.
 
 `useFormSaverDom` scans this selector inside the scoped root:
 
@@ -442,6 +501,7 @@ useFormSaverDom({
     storage: 'localStorage',
     enabled: true,
     debounceMs: 150,
+    saveEvent: 'change',
     restoreOnMount: true,
     version,
     mergeUnknownKeys: true,
@@ -473,6 +533,25 @@ useFormSaverDom({
 ```
 
 By default, password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
+
+
+### `FormSaverScope`
+
+`FormSaverScope` is a lightweight wrapper around `useFormSaverDom`.
+
+```tsx
+<FormSaverScope asChild storageKey="settings">
+    <form>
+        <input name="query" defaultValue="" />
+    </form>
+</FormSaverScope>
+```
+
+Important details:
+
+- `asChild` requires exactly one child element that can receive a React ref.
+- Without `asChild`, the component renders the element passed through `as`, or `div` by default.
+- The wrapper is intentionally simple. Use `useFormSaverDom` directly when you need returned helper methods.
 
 ## TypeScript form types
 

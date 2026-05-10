@@ -9,6 +9,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { DEFAULT_FORM_SAVER_DEBOUNCE_MS, DEFAULT_FORM_SAVER_DOM_SAVE_EVENT } from './constants'
 import {
     collectDomFormValues,
     type DomControlOptions,
@@ -65,7 +66,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         storageKey,
         storage = 'localStorage',
         enabled = true,
-        debounceMs = 150,
+        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+        saveEvent = DEFAULT_FORM_SAVER_DOM_SAVE_EVENT,
         restoreOnMount = true,
         version,
         mergeUnknownKeys = true,
@@ -85,6 +87,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isRestoringRef = useRef(false)
+    const isDirtyRef = useRef(false)
     const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
     const mapAfterLoadRef = useLatestRef(mapAfterLoad)
     const onRestoreRef = useLatestRef(onRestore)
@@ -120,6 +123,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                 })
 
                 if (saved) {
+                    isDirtyRef.current = false
                     setLastSavedAt(saved.meta.savedAt)
                     onSaveRef.current?.(saved.values, saved.meta)
                 }
@@ -262,20 +266,57 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         }
 
         const handleDomInput = (event: Event): void => {
-            if (!isRestoringRef.current && shouldSaveAfterDomEvent(event)) {
+            if (isRestoringRef.current) {
+                return
+            }
+
+            isDirtyRef.current = true
+
+            if (saveEvent === 'input' && shouldSaveAfterDomEvent(event)) {
+                scheduleSave(root)
+            }
+        }
+
+        const handleDomChange = (event: Event): void => {
+            if (isRestoringRef.current) {
+                return
+            }
+
+            isDirtyRef.current = true
+
+            if (saveEvent === 'change' || shouldSaveAfterDomEvent(event)) {
                 scheduleSave(root)
             }
         }
 
         root.addEventListener('input', handleDomInput)
-        root.addEventListener('change', handleDomInput)
+        root.addEventListener('change', handleDomChange)
 
         return () => {
             root.removeEventListener('input', handleDomInput)
-            root.removeEventListener('change', handleDomInput)
+            root.removeEventListener('change', handleDomChange)
             clearTimer(timerRef)
         }
-    }, [enabled, root, scheduleSave])
+    }, [enabled, root, saveEvent, scheduleSave])
+
+    useEffect(() => {
+        if (!root || !enabled || typeof window === 'undefined') {
+            return
+        }
+
+        const handleBeforeUnload = (): void => {
+            if (isDirtyRef.current || timerRef.current !== null) {
+                clearTimer(timerRef)
+                saveCurrentRoot(root)
+            }
+        }
+
+        window.addEventListener('beforeunload', handleBeforeUnload)
+
+        return () => {
+            window.removeEventListener('beforeunload', handleBeforeUnload)
+        }
+    }, [enabled, root, saveCurrentRoot])
 
     return useMemo<UseFormSaverDomResult<TRoot>>(
         () => ({
