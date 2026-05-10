@@ -1,19 +1,14 @@
 /**
  * Native DOM control helpers for the DOM-based FormSaver API.
  *
- * TL;DR: this one hooks only standard DOM controls (non-hidden and non-readonly
- * <input>, <select>, <textarea>) inside of some element (usually <form>).
- * Use bindings (bind.[method]) from useFormSaver.ts for custom React controls
- * or UI-library widgets.
- *
  * These functions intentionally work with real browser controls rather than
  * React state. They are used by useFormSaverDom and are best suited for
  * uncontrolled native inputs, textareas, and selects.
  *
- * The DOM hook supports only standard named DOM controls: input, select, and
- * textarea. Hidden inputs, readonly inputs, and readonly textareas are skipped
- * by default, as are non-data input types such as file, image, button, reset,
- * and submit. Password inputs are skipped unless includePasswords is enabled.
+ * The DOM hook supports only standard named DOM controls: <input>, <select>, and
+ * <textarea>. Hidden inputs, readonly inputs, and readonly textareas are skipped
+ * by default, as are non-data input types such as 'file', 'image', 'button', 'reset',
+ * and 'submit'. Password inputs are skipped unless includePasswords is enabled.
  * For custom React controls or UI-library widgets, use the typed bind helpers
  * from useFormSaver.ts instead; see the README examples.
  */
