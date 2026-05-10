@@ -59,6 +59,7 @@ const shouldSaveAfterDomEvent = (event: Event): boolean => {
     return !(target instanceof HTMLSelectElement)
 }
 
+// Hook
 export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     options: UseFormSaverDomOptions
 ): UseFormSaverDomResult<TRoot> => {
