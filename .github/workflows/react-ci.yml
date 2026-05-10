@@ -1,0 +1,71 @@
+name: React CI
+
+on:
+    push:
+        branches:
+            - main
+            - master
+            - react
+    pull_request:
+        branches:
+            - main
+            - master
+            - react
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    react:
+        name: React module and demo
+        runs-on: ubuntu-latest
+
+        defaults:
+            run:
+                shell: bash
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v6
+
+            - name: Set up Node.js
+              uses: actions/setup-node@v6
+              with:
+                  node-version: 24
+                  cache: npm
+                  cache-dependency-path: |
+                      react/package-lock.json
+                      react/demo/package-lock.json
+
+            - name: Install React module dependencies
+              working-directory: react
+              run: npm ci
+
+            - name: Check React module formatting
+              working-directory: react
+              run: npm run format:check
+
+            - name: Lint React module
+              working-directory: react
+              run: npm run lint
+
+            - name: Run React module tests
+              working-directory: react
+              run: npm run test:run
+
+            - name: Type-check React module
+              working-directory: react
+              run: npm run typecheck
+
+            - name: Build React module
+              working-directory: react
+              run: npm run build
+
+            - name: Install demo dependencies
+              working-directory: react/demo
+              run: npm ci
+
+            - name: Build demo app
+              working-directory: react/demo
+              run: npm run build
