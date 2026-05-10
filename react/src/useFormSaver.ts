@@ -15,7 +15,6 @@
 
 import {
     type ChangeEvent,
-    type MutableRefObject,
     useCallback,
     useEffect,
     useMemo,
@@ -55,7 +54,11 @@ const valueToMultiSelectValue = (value: FormSaverValue | undefined): readonly st
     Array.isArray(value) ? value.map((item) => String(item)) : []
 
 // Stores the latest callback/value without making effects depend on its identity.
-const useLatestRef = <TValue>(value: TValue): MutableRefObject<TValue> => {
+type LatestRef<TValue> = {
+    current: TValue
+}
+
+const useLatestRef = <TValue>(value: TValue): LatestRef<TValue> => {
     const ref = useRef(value)
 
     ref.current = value
