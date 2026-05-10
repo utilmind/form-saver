@@ -103,8 +103,8 @@ const ControlledDemo = () => {
 }
 
 beforeEach(() => {
-    localStorage.clear()
-    sessionStorage.clear()
+    window.localStorage.clear()
+    window.sessionStorage.clear()
 })
 
 afterEach(() => {
