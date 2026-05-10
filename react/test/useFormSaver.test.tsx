@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
 import { useFormSaver } from '../src/useFormSaver'
+import { installTestBrowserStorage } from './testStorage'
 
 interface SettingsFormValues {
     title: string
@@ -103,8 +104,7 @@ const ControlledDemo = () => {
 }
 
 beforeEach(() => {
-    window.localStorage.clear()
-    window.sessionStorage.clear()
+    installTestBrowserStorage()
 })
 
 afterEach(() => {

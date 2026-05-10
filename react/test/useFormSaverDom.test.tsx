@@ -13,6 +13,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
 import { useFormSaverDom } from '../src/useFormSaverDom'
+import { installTestBrowserStorage } from './testStorage'
 
 const STORAGE_KEY = 'use-form-saver-dom-test'
 
@@ -77,8 +78,7 @@ const DomDemo = ({
 }
 
 beforeEach(() => {
-    window.localStorage.clear()
-    window.sessionStorage.clear()
+    installTestBrowserStorage()
 })
 
 afterEach(() => {
