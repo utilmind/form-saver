@@ -10,6 +10,7 @@ import type { FormSaverValue, FormSaverValues } from './types'
 
 const DEF_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
 const DEF_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
+const IGNORE_INPUT_TYPES = ['button', 'file', 'image', 'reset', 'submit'] // also when type="password", but we check password fields additionally. It may be allowed in rare cases, based on options.
 
 export interface DomControlOptions {
     /** Include password fields in saved values. Disabled by default for safety. */
@@ -23,6 +24,9 @@ export interface DomControlOptions {
 }
 
 type SupportedControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+
+const hasOwnValue = (values: FormSaverValues, name: string): boolean =>
+    Object.prototype.hasOwnProperty.call(values, name)
 
 export const getDomFormControls = (
     root: HTMLElement,
@@ -50,7 +54,7 @@ export const getDomFormControls = (
 
                 if (
                     // Don't save values for these input types, which are either non-data or potentially sensitive. This also helps avoid accidentally saving large data blobs from file inputs.
-                    ['button', 'file', 'image', 'reset', 'submit'].indexOf(type) === -1 &&
+                    IGNORE_INPUT_TYPES.indexOf(type) === -1 &&
                     // We don't want to store entered passwords either, but maybe there can be some exceptions for non-sensitive data, so we allow including them via options.
                     (type !== 'password' || options.includePasswords)
                 ) {
@@ -71,7 +75,7 @@ export const collectDomFormValues = (
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
     const values: FormSaverValues = {}
-    const checkboxCounts: Record<string, number> = {}
+    const checkboxCounts: Record<string, number> = Object.create(null) as Record<string, number>
 
     // Checkbox values need one cheap pre-pass: a single checkbox is boolean,
     // while multiple checkboxes with the same name are stored as an array of
@@ -94,8 +98,8 @@ export const collectDomFormValues = (
             const type = input.type
             if (type === 'checkbox') {
                 if (checkboxCounts[name] > 1) {
-                    let selected = values[name] as string[] | undefined
-                    if (!selected) {
+                    let selected = hasOwnValue(values, name) ? values[name] : undefined
+                    if (!Array.isArray(selected)) {
                         selected = []
                         values[name] = selected
                     }
@@ -108,7 +112,7 @@ export const collectDomFormValues = (
             } else if (type === 'radio') {
                 if (input.checked) {
                     values[name] = input.value
-                } else if (values[name] === undefined) {
+                } else if (!hasOwnValue(values, name)) {
                     values[name] = null
                 }
             } else {
