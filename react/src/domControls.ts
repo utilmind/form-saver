@@ -159,6 +159,7 @@ export const restoreDomFormValues = (
     for (let i = 0; i < controls.length; ++i) {
         const ctrl = controls[i]
         const val = values[ctrl.name]
+        // Only attempt restoration if a value exists in the data set.
         if (val !== undefined) {
             restoreControlValue(ctrl, val)
         }
@@ -188,14 +189,15 @@ export const resetDomFormValues = (root: HTMLElement, options: DomControlOptions
             ;(ctrl as HTMLTextAreaElement).value = (ctrl as HTMLTextAreaElement).defaultValue
         } else if (tag === 'SELECT') {
             const select = ctrl as HTMLSelectElement
+            const opts = select.options
             let hasDefault = false
-            for (let j = 0; j < select.options.length; ++j) {
-                const opt = select.options[j]
+            for (let j = 0; j < opts.length; ++j) {
+                const opt = opts[j]
                 opt.selected = opt.defaultSelected
                 if (opt.defaultSelected) hasDefault = true
             }
-            if (!select.multiple && !hasDefault && select.options.length > 0) {
-                select.options[0].selected = true
+            if (!select.multiple && !hasDefault && opts.length > 0) {
+                opts[0].selected = true
             }
         }
     }
