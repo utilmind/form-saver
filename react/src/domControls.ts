@@ -11,14 +11,6 @@ import type { FormSaverValue, FormSaverValues } from './types'
 const DEF_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
 const DEF_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
 
-const UNSUPPORTED_INPUT_TYPES = {
-    button: true,
-    file: true,
-    image: true,
-    reset: true,
-    submit: true
-} as const
-
 export interface DomControlOptions {
     /** Include password fields in saved values. Disabled by default for safety. */
     includePasswords?: boolean
@@ -32,303 +24,144 @@ export interface DomControlOptions {
 
 type SupportedControl = HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
 
-const isInput = (control: SupportedControl): control is HTMLInputElement =>
-    control.tagName === 'INPUT'
-
-const isTextArea = (control: SupportedControl): control is HTMLTextAreaElement =>
-    control.tagName === 'TEXTAREA'
-
-const isSelect = (control: SupportedControl): control is HTMLSelectElement =>
-    control.tagName === 'SELECT'
-
-const getInputType = (input: HTMLInputElement): string => input.type.toLowerCase()
-
-const isUnsupportedInput = (input: HTMLInputElement, includePasswords: boolean): boolean => {
-    const type = getInputType(input)
-
-    return type in UNSUPPORTED_INPUT_TYPES || (!includePasswords && type === 'password')
-}
-
-const isIgnored = (control: SupportedControl, ignoreSelector: string): boolean =>
-    Boolean(ignoreSelector) &&
-    (control.matches(ignoreSelector) || Boolean(control.closest(ignoreSelector)))
-
-const isSupportedControl = (
-    element: Element,
-    includePasswords: boolean,
-    ignoreSelector: string
-): element is SupportedControl => {
-    if (
-        (!(element instanceof HTMLInputElement) &&
-            !(element instanceof HTMLTextAreaElement) &&
-            !(element instanceof HTMLSelectElement)) ||
-        !element.name ||
-        isIgnored(element, ignoreSelector)
-    ) {
-        return false
-    }
-
-    return !(element instanceof HTMLInputElement) || !isUnsupportedInput(element, includePasswords)
-}
-
 export const getDomFormControls = (
-    root: ParentNode,
+    root: HTMLElement,
     options: DomControlOptions = {}
 ): SupportedControl[] => {
-    const controlSelector = options.controlSelector ?? DEF_DOM_CONTROL_SELECTOR
-    const ignoreSelector = options.ignoreSelector ?? DEF_DOM_IGNORE_SELECTOR
-    const includePasswords = options.includePasswords ?? false
+    const controlSelector = options.controlSelector || DEF_DOM_CONTROL_SELECTOR
+    const ignoreSelector = options.ignoreSelector || DEF_DOM_IGNORE_SELECTOR
+    const elements = root.querySelectorAll(controlSelector)
     const result: SupportedControl[] = []
-    const controls = root.querySelectorAll(controlSelector)
+    const len = elements.length
 
-    for (let i = 0; i < controls.length; ++i) {
-        const control = controls[i]
-        if (isSupportedControl(control, includePasswords, ignoreSelector)) {
-            result.push(control)
+    for (let i = 0; i < len; ++i) {
+        const ctrl = elements[i] as SupportedControl
+        const name = ctrl.name
+
+        if (
+            // Nameless elements are invalid for our purposes.
+            name &&
+            (!ignoreSelector || !ctrl.matches(ignoreSelector))
+        ) {
+            const tag = ctrl.tagName
+            if (tag === 'INPUT') {
+                const input = ctrl as HTMLInputElement
+                const type = input.type // Browser already returns normalized lowercase type.
+
+                if (
+                    // Don't save values for these input types, which are either non-data or potentially sensitive. This also helps avoid accidentally saving large data blobs from file inputs.
+                    ['button', 'file', 'image', 'reset', 'submit'].indexOf(type) === -1 &&
+                    // We don't want to store entered passwords either, but maybe there can be some exceptions for non-sensitive data, so we allow including them via options.
+                    (type !== 'password' || options.includePasswords)
+                ) {
+                    result.push(input)
+                }
+            } else if (tag === 'TEXTAREA' || tag === 'SELECT') {
+                result.push(ctrl)
+            }
         }
     }
 
     return result
 }
 
-const getSelectedOptionValues = (select: HTMLSelectElement): string[] => {
-    const values: string[] = []
-
-    for (let i = 0; i < select.options.length; ++i) {
-        const option = select.options[i]
-        if (option.selected) {
-            values.push(option.value)
-        }
-    }
-
-    return values
-}
-
-const toStringArray = (value: FormSaverValue | undefined): string[] => {
-    if (!Array.isArray(value)) {
-        return value === undefined || value === null ? [] : [String(value)]
-    }
-
-    const result: string[] = []
-    for (let i = 0; i < value.length; ++i) {
-        const item = value[i]
-        if (item !== null) {
-            result.push(String(item))
-        }
-    }
-
-    return result
-}
-
-const collectCheckboxValue = (checkboxes: HTMLInputElement[]): boolean | string[] => {
-    if (checkboxes.length === 1) {
-        return checkboxes[0].checked
-    }
-
-    const values: string[] = []
-    for (let i = 0; i < checkboxes.length; ++i) {
-        const checkbox = checkboxes[i]
-        if (checkbox.checked) {
-            values.push(checkbox.value)
-        }
-    }
-
-    return values
-}
-
-const collectRadioValue = (radios: HTMLInputElement[]): string | undefined => {
-    for (let i = 0; i < radios.length; ++i) {
-        const radio = radios[i]
-        if (radio.checked) {
-            return radio.value
-        }
-    }
-
-    return undefined
-}
-
-const collectControlGroupValue = (controls: SupportedControl[]): FormSaverValue | undefined => {
-    const firstControl = controls[0]
-
-    if (isInput(firstControl)) {
-        const type = getInputType(firstControl)
-
-        if (type === 'checkbox') {
-            return collectCheckboxValue(controls as HTMLInputElement[])
-        }
-
-        if (type === 'radio') {
-            return collectRadioValue(controls as HTMLInputElement[])
-        }
-
-        return firstControl.value
-    }
-
-    if (isTextArea(firstControl)) {
-        return firstControl.value
-    }
-
-    if (isSelect(firstControl)) {
-        return firstControl.multiple ? getSelectedOptionValues(firstControl) : firstControl.value
-    }
-
-    return undefined
-}
-
-// Collects values from all supported named native controls inside root.
 export const collectDomFormValues = (
-    root: ParentNode,
+    root: HTMLElement,
     options: DomControlOptions = {}
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
-    const groups: Record<string, SupportedControl[] | undefined> = {}
     const values: FormSaverValues = {}
 
     for (let i = 0; i < controls.length; ++i) {
-        const control = controls[i]
-        const group = groups[control.name]
+        const ctrl = controls[i]
+        const name = ctrl.name
+        const tag = ctrl.tagName
 
-        if (group) {
-            group.push(control)
-        } else {
-            groups[control.name] = [control]
-        }
-    }
-
-    for (const name in groups) {
-        const group = groups[name]
-        if (group !== undefined) {
-            values[name] = collectControlGroupValue(group)
+        if (tag === 'INPUT') {
+            const input = ctrl as HTMLInputElement
+            const type = input.type
+            if (type === 'checkbox') {
+                values[name] = input.checked
+            } else if (type === 'radio') {
+                if (input.checked) {
+                    values[name] = input.value
+                } else if (values[name] === undefined) {
+                    values[name] = null
+                }
+            } else {
+                values[name] = input.value
+            }
+        } else if (tag === 'TEXTAREA') {
+            values[name] = (ctrl as HTMLTextAreaElement).value
+        } else if (tag === 'SELECT') {
+            const select = ctrl as HTMLSelectElement
+            if (select.multiple) {
+                const selected: string[] = []
+                for (let j = 0; j < select.options.length; ++j) {
+                    const opt = select.options[j]
+                    if (opt.selected) {
+                        selected.push(opt.value)
+                    }
+                }
+                values[name] = selected
+            } else {
+                values[name] = select.value
+            }
         }
     }
 
     return values
 }
 
-const restoreCheckboxValue = (
-    checkboxes: HTMLInputElement[],
-    value: FormSaverValue | undefined
-) => {
-    if (checkboxes.length === 1) {
-        checkboxes[0].checked = Boolean(value)
-    } else {
-        const selectedValues = toStringArray(value)
-        for (let i = 0; i < checkboxes.length; ++i) {
-            const checkbox = checkboxes[i]
-            checkbox.checked = selectedValues.indexOf(checkbox.value) !== -1
-        }
-    }
-}
-
-const restoreRadioValue = (radios: HTMLInputElement[], value: FormSaverValue | undefined) => {
-    const stringValue = value === undefined || value === null ? '' : String(value)
-
-    for (let i = 0; i < radios.length; ++i) {
-        const radio = radios[i]
-        radio.checked = stringValue !== '' && radio.value === stringValue
-    }
-}
-
-const restoreSelectValue = (select: HTMLSelectElement, value: FormSaverValue | undefined) => {
-    if (!select.multiple) {
-        select.value = value === undefined || value === null ? '' : String(value)
-    } else {
-        const selectedValues = toStringArray(value)
-        for (let i = 0; i < select.options.length; ++i) {
-            const option = select.options[i]
-            option.selected = selectedValues.indexOf(option.value) !== -1
-        }
-    }
-}
-
-const restoreControlGroupValue = (
-    controls: SupportedControl[],
-    value: FormSaverValue | undefined
-): void => {
-    const firstControl = controls[0]
-    const _isInput = isInput(firstControl)
-
-    if (_isInput) {
-        const type = getInputType(firstControl)
-
+const restoreControlValue = (control: SupportedControl, value: FormSaverValue): void => {
+    const tag = control.tagName
+    if (tag === 'INPUT') {
+        const input = control as HTMLInputElement
+        const type = input.type
         if (type === 'checkbox') {
-            restoreCheckboxValue(controls as HTMLInputElement[], value)
-            return
+            input.checked = Boolean(value)
+        } else if (type === 'radio') {
+            input.checked = input.value === String(value)
+        } else {
+            input.value = value === null || value === undefined ? '' : String(value)
         }
-
-        if (type === 'radio') {
-            restoreRadioValue(controls as HTMLInputElement[], value)
-            return
+    } else if (tag === 'TEXTAREA') {
+        ;(control as HTMLTextAreaElement).value =
+            value === null || value === undefined ? '' : String(value)
+    } else if (tag === 'SELECT') {
+        const select = control as HTMLSelectElement
+        if (select.multiple && Array.isArray(value)) {
+            for (let i = 0; i < select.options.length; ++i) {
+                const opt = select.options[i]
+                opt.selected = false
+                for (let j = 0; j < value.length; ++j) {
+                    if (opt.value === String(value[j])) {
+                        opt.selected = true
+                        break
+                    }
+                }
+            }
+        } else {
+            select.value = value === null || value === undefined ? '' : String(value)
         }
-    }
-
-    if (_isInput || isTextArea(firstControl)) {
-        firstControl.value = value === undefined || value === null ? '' : String(value)
-    } else if (isSelect(firstControl)) {
-        restoreSelectValue(firstControl, value)
     }
 }
 
-// Restores only values that are present in the provided object.
 export const restoreDomFormValues = (
-    root: ParentNode,
-    values: Partial<FormSaverValues>,
+    root: HTMLElement,
+    values: FormSaverValues,
     options: DomControlOptions = {}
 ): void => {
     const controls = getDomFormControls(root, options)
-    const groups: Record<string, SupportedControl[] | undefined> = {}
-
     for (let i = 0; i < controls.length; ++i) {
-        const control = controls[i]
-        const group = groups[control.name]
-
-        if (group) {
-            group.push(control)
-        } else {
-            groups[control.name] = [control]
-        }
-    }
-
-    for (const name in values) {
-        const group = groups[name]
-        if (group !== undefined) {
-            restoreControlGroupValue(group, values[name])
+        const ctrl = controls[i]
+        const val = values[ctrl.name]
+        if (val !== undefined) {
+            restoreControlValue(ctrl, val)
         }
     }
 }
 
-const resetSelectToDefault = (select: HTMLSelectElement): void => {
-    let hasDefaultSelected = false
-
-    for (let i = 0; i < select.options.length; ++i) {
-        const option = select.options[i]
-        option.selected = option.defaultSelected
-        hasDefaultSelected = hasDefaultSelected || option.defaultSelected
-    }
-
-    if (!select.multiple && !hasDefaultSelected && select.options.length > 0) {
-        select.options[0].selected = true
-    }
-}
-
-const resetControlToDefault = (control: SupportedControl): void => {
-    const _isInput = isInput(control)
-    if (_isInput) {
-        const type = getInputType(control)
-        if (type === 'checkbox' || type === 'radio') {
-            control.checked = control.defaultChecked
-            return
-        }
-    }
-
-    if (_isInput || isTextArea(control)) {
-        control.value = control.defaultValue
-    } else if (isSelect(control)) {
-        resetSelectToDefault(control)
-    }
-}
-
-// Resets supported controls to their native default values.
 export const resetDomFormValues = (root: HTMLElement, options: DomControlOptions = {}): void => {
     if (root instanceof HTMLFormElement) {
         root.reset()
@@ -337,6 +170,30 @@ export const resetDomFormValues = (root: HTMLElement, options: DomControlOptions
 
     const controls = getDomFormControls(root, options)
     for (let i = 0; i < controls.length; ++i) {
-        resetControlToDefault(controls[i])
+        const ctrl = controls[i]
+        const tag = ctrl.tagName
+
+        if (tag === 'INPUT') {
+            const input = ctrl as HTMLInputElement
+            const type = input.type
+            if (type === 'checkbox' || type === 'radio') {
+                input.checked = input.defaultChecked
+            } else {
+                input.value = input.defaultValue
+            }
+        } else if (tag === 'TEXTAREA') {
+            ;(ctrl as HTMLTextAreaElement).value = (ctrl as HTMLTextAreaElement).defaultValue
+        } else if (tag === 'SELECT') {
+            const select = ctrl as HTMLSelectElement
+            let hasDefault = false
+            for (let j = 0; j < select.options.length; ++j) {
+                const opt = select.options[j]
+                opt.selected = opt.defaultSelected
+                if (opt.defaultSelected) hasDefault = true
+            }
+            if (!select.multiple && !hasDefault && select.options.length > 0) {
+                select.options[0].selected = true
+            }
+        }
     }
 }
