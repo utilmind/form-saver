@@ -37,9 +37,6 @@ const getWindowStorage = (storageName: BrowserStorageName): Storage | null => {
     return null
 }
 
-const isPlainObject = (value: unknown): value is Record<string, unknown> =>
-    Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-
 // Parses stored JSON without throwing, because storage may contain stale or invalid data.
 const safeParseJson = (value: string | null): unknown => {
     if (value) {
@@ -52,16 +49,21 @@ const safeParseJson = (value: string | null): unknown => {
     return null
 }
 
-// Accepts only the React FormSaver envelope format. Legacy compatibility is intentionally not supported.
+// Optimized: Reduced overhead by removing helper function and using direct checks
 const normalizeStoredData = <TValues extends FormSaverValuesConstraint<TValues>>(
     raw: unknown
-): StoredFormSaverData<TValues> | null =>
-    isPlainObject(raw) &&
-    isPlainObject(raw.values) &&
-    isPlainObject(raw.meta) &&
-    typeof raw.meta.savedAt === 'number'
-        ? (raw as unknown as StoredFormSaverData<TValues>)
+): StoredFormSaverData<TValues> | null => {
+    const r = raw as StoredFormSaverData | null
+    // prettier-ignore
+    return r
+            && typeof r.values === 'object'
+            // We use StoredFormSaverData and esLint thinks that data is valid already, but we need to check meta shape manually, in case of corrupted or stale data.
+            // We only check for the required savedAt field to keep it lightweight.
+            // eslint-disable-next-line
+            && typeof r.meta?.savedAt === 'number'
+        ? (r as unknown as StoredFormSaverData<TValues>)
         : null
+}
 
 // Merges current form values into existing storage while preserving unknown keys by default.
 const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
@@ -187,15 +189,21 @@ export const clearStorageKeys = (
     if (storage && keyPrefix.length) {
         try {
             const prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix]
-
-            // Iterate backwards to safely remove items by index without creating an intermediate array of keys. (Speed-optimized.)
-            for (let i = storage.length - 1; i >= 0; --i) {
-                const key = storage.key(i)
-                if (key) {
-                    // Use some() for early exit once a prefix matches
-                    const matches = prefixes.some((p) => p.length > 0 && key.startsWith(p))
-                    if (matches) {
-                        storage.removeItem(key)
+            const pLen = prefixes.length
+            if (pLen) {
+                // Iterate backwards to safely remove items by index without creating an intermediate array of keys. (Speed-optimized.)
+                for (let i = storage.length - 1; i >= 0; --i) {
+                    const key = storage.key(i)
+                    if (key) {
+                        // Speed optimized nested loop instead of possible `prefixes.some((p) => p.length > 0 && key.startsWith(p))` to avoid callback creation and overhead.
+                        for (let j = 0; j < pLen; ++j) {
+                            const p = prefixes[j]
+                            // indexOf(p) === 0 is generally faster or equal to startsWith in most engines.
+                            if (p.length > 0 && key.indexOf(p) === 0) {
+                                storage.removeItem(key)
+                                break
+                            }
+                        }
                     }
                 }
             }
