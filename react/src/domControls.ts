@@ -97,8 +97,9 @@ export const collectDomFormValues = (
             const select = ctrl as HTMLSelectElement
             if (select.multiple) {
                 const selected: string[] = []
-                for (let j = 0; j < select.options.length; ++j) {
-                    const opt = select.options[j]
+                const opts = select.options
+                for (let j = 0; j < opts.length; ++j) {
+                    const opt = opts[j]
                     if (opt.selected) {
                         selected.push(opt.value)
                     }
