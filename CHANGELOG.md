@@ -16,11 +16,14 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, SSR-safe storage behavior, and DOM control collection/restoration helpers.
 - Added ESLint and Prettier configuration for the React module.
 - Added GitHub Actions CI for React module checks and Vite demo build.
+- Added `FormSaverScope` and DOM auto-binding documentation for lightweight uncontrolled native control usage.
 
 ### Changed
 
 - Updated the repository README to describe both the new React module and the preserved legacy jQuery plugin.
 - Documented that the React storage format is independent from the legacy jQuery storage format.
+- Marked the React package as side-effect-free to improve production tree-shaking of unused exports.
+- Decided that dynamic DOM controls should use explicit `restoreNow()` in the MVP instead of a built-in `MutationObserver`.
 
 ### Notes
 

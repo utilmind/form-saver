@@ -82,6 +82,20 @@ import { useFormSaver } from 'form-saver-react'
 
 The storage helpers are SSR-safe, but the hook is still a React client hook because it uses client-side state/effects and browser storage.
 
+## Bundle size and tree-shaking
+
+The package is marked as side-effect-free in `package.json`:
+
+```json
+{
+    "sideEffects": false
+}
+```
+
+This helps production bundlers such as Next.js/Webpack, Vite/Rollup, and similar tools remove unused exports. For example, if an application imports only `useFormSaverDom`, the `FormSaverScope` wrapper should not add meaningful production bundle weight.
+
+Development builds may still include more code for HMR and debugging. Check production builds when comparing bundle size.
+
 ## Basic usage
 
 ```tsx
@@ -297,6 +311,8 @@ The DOM API is intended for **uncontrolled** native controls. Use `defaultValue`
 By default, the DOM API skips password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas.
 
 For custom React controls or UI-library widgets that do not render native named controls, prefer the typed `useFormSaver` API and its `bind.*` helpers. Use the DOM API only for standard named `input`, `textarea`, and `select` controls.
+
+Dynamically added controls are not watched by a `MutationObserver` in the MVP. If a section appears after the initial restore, call `restoreNow()` after that section is mounted. This keeps the DOM mode lightweight and avoids a permanent observer for forms that do not need dynamic field discovery.
 
 ### Custom React controls with `bind`
 

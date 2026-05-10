@@ -69,7 +69,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Add `useFormSaverDom` hook for attaching FormSaver to a form or container via a React ref.
 - [x] Add `FormSaverScope` wrapper component on top of `useFormSaverDom`, including an `asChild` mode that does not add an extra DOM element.
 - [x] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStoredValues` helpers to the DOM hook.
-- [ ] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option.
+- [x] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option. Decision: use explicit `restoreNow()` for the MVP; skip `MutationObserver` to keep DOM mode small and avoid a permanent observer unless real usage proves it is needed.
 - [ ] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
 - [x] Add tests for DOM collect/restore behavior.
 - [ ] Add hook tests for DOM restore/save/reset/clear behavior.
@@ -110,6 +110,7 @@ The demo app exists now, so the next test step should focus on the storage helpe
 - [x] Decide package manager (`npm`, `pnpm`, or `yarn`). Decision: npm, because `react/package-lock.json` is already present.
 - [ ] Add final build configuration.
 - [ ] Add `exports` / `types` fields for package consumers.
+- [x] Mark the React package as side-effect-free for production tree-shaking.
 - [x] Add formatting configuration.
 - [x] Add initial Vitest test configuration.
 - [x] Add linting for the React module.
@@ -123,4 +124,4 @@ The demo app exists now, so the next test step should focus on the storage helpe
 2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
 3. Should dirty-state tracking be exposed by the hook?
 4. Should validation integration be built-in or left entirely to application code?
-5. Should DOM auto mode support dynamically added controls via `MutationObserver`, or should users call `restoreNow()` manually after dynamic sections appear?
+5. DOM auto mode dynamic controls decision: call `restoreNow()` manually after dynamic sections appear for now; no `MutationObserver` in the MVP.
