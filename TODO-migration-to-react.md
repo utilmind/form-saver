@@ -81,8 +81,8 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Decide whether the React storage format must be compatible with the legacy jQuery storage object. Decision: no compatibility layer; React stores one clean JSON envelope per `storageKey`.
 - [x] Decide whether URL hash synchronization should be reintroduced later. Decision: postpone; not part of the React MVP.
 - [x] Decide whether per-field load transforms are needed in the hook API. Decision: use form-level `mapAfterLoad` for now; per-field transforms can be added after real usage.
-- [ ] Decide whether dirty-state tracking is needed after the demo app exists.
-- [ ] Decide whether validation integration should be built-in or left to application code.
+- [x] Decide whether dirty-state tracking is needed after the demo app exists. Decision: keep dirty-state internal only; it is used for immediate `beforeunload` flushing and is not exposed in the public API.
+- [x] Decide whether validation integration should be built-in or left to application code. Decision: no built-in validation integration; FormSaver saves and restores the user's current input even if the application later considers it invalid.
 
 ## Phase 5: Tests
 
@@ -120,9 +120,7 @@ The demo app exists now, so the next test step should focus on the storage helpe
 
 ## Open questions
 
-1. Which React target should be documented as primary: React 18+, React 19+, or both? Current package peer dependency is `react >=18.0.0`.
+1. React compatibility decision: document React 18+ as the supported baseline for now. The peer dependency remains broad (`react >=18.0.0`), so React 19 is allowed without making the library React-19-only.
 2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
-3. Should dirty-state tracking be exposed by the hook, or should it stay internal for `beforeunload` flushing only?
-4. Should validation integration be built-in or left entirely to application code?
-5. DOM auto mode dynamic controls decision: call `restoreNow()` manually after dynamic sections appear for now; no `MutationObserver` in the MVP.
-6. Package name decision: keep `form-saver-react`, switch to `form-saver`, or use a scoped name such as `@utilmind/form-saver` if publishing is planned later?
+3. DOM auto mode dynamic controls decision: call `restoreNow()` manually after dynamic sections appear for now; no `MutationObserver` in the MVP.
+4. Package name decision: keep `form-saver-react`, switch to `form-saver`, or use a scoped name such as `@utilmind/form-saver` if publishing is planned later?
