@@ -114,6 +114,7 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     return result
 }
 
+// Hook
 export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>(
     options: UseFormSaverOptions<TValues>
 ): UseFormSaverResult<TValues> => {
