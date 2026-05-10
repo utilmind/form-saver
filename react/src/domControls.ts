@@ -41,7 +41,7 @@ export const getDomFormControls = (
         if (
             // Nameless elements are invalid for our purposes.
             name &&
-            (!ignoreSelector || !ctrl.matches(ignoreSelector))
+            (!ignoreSelector || (!ctrl.matches(ignoreSelector) && !ctrl.closest(ignoreSelector)))
         ) {
             const tag = ctrl.tagName
             if (tag === 'INPUT') {
@@ -71,6 +71,18 @@ export const collectDomFormValues = (
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
     const values: FormSaverValues = {}
+    const checkboxCounts: Record<string, number> = {}
+
+    // Checkbox values need one cheap pre-pass: a single checkbox is boolean,
+    // while multiple checkboxes with the same name are stored as an array of
+    // checked option values.
+    for (let i = 0; i < controls.length; ++i) {
+        const ctrl = controls[i]
+        if (ctrl.tagName === 'INPUT' && (ctrl as HTMLInputElement).type === 'checkbox') {
+            const name = ctrl.name
+            checkboxCounts[name] = (checkboxCounts[name] || 0) + 1
+        }
+    }
 
     for (let i = 0; i < controls.length; ++i) {
         const ctrl = controls[i]
@@ -81,7 +93,18 @@ export const collectDomFormValues = (
             const input = ctrl as HTMLInputElement
             const type = input.type
             if (type === 'checkbox') {
-                values[name] = input.checked
+                if (checkboxCounts[name] > 1) {
+                    let selected = values[name] as string[] | undefined
+                    if (!selected) {
+                        selected = []
+                        values[name] = selected
+                    }
+                    if (input.checked) {
+                        selected.push(input.value)
+                    }
+                } else {
+                    values[name] = input.checked
+                }
             } else if (type === 'radio') {
                 if (input.checked) {
                     values[name] = input.value
@@ -120,7 +143,11 @@ const restoreControlValue = (control: SupportedControl, value: FormSaverValue): 
         const input = control as HTMLInputElement
         const type = input.type
         if (type === 'checkbox') {
-            input.checked = Boolean(value)
+            if (Array.isArray(value)) {
+                input.checked = value.indexOf(input.value) !== -1
+            } else {
+                input.checked = Boolean(value)
+            }
         } else if (type === 'radio') {
             input.checked = input.value === String(value)
         } else {
