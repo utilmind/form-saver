@@ -17,7 +17,6 @@ import {
 } from './domControls'
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
-    FormSaverDomSaveEvent,
     FormSaverValues,
     StoredFormSaverData,
     UseFormSaverDomOptions,
@@ -65,10 +64,10 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
 ): UseFormSaverDomResult<TRoot> => {
     const {
         storageKey,
-        storage = 'localStorage',
+        storage = 'localStorage', // 'localStorage' or 'sessionStorage'
         enabled = true,
         debounceMs = 150, // ms
-        saveEvent: FormSaverDomSaveEvent = 'change',
+        saveEvent = 'change', // 'change' or 'input'
         restoreOnMount = true,
         version,
         mergeUnknownKeys = true,

@@ -120,7 +120,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const {
         storageKey,
         initialValues,
-        storage = 'localStorage',
+        storage = 'localStorage', // 'localStorage' or 'sessionStorage'
         enabled = true,
         debounceMs = 150, // ms
         saveOnMount = false,
