@@ -71,63 +71,44 @@ export const collectDomFormValues = (
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
     const values: FormSaverValues = {}
+    const checkboxCounts: Record<string, number> = {}
 
-    // 1: Identify checkbox groups by counting unique elements per name.
-    // We use a Set to ensure that if the same element reference appears multiple
-    // times in the collection, it doesn't trick the logic into creating an array.
-    const checkboxGroups = new Map<string, Set<HTMLInputElement>>()
-
-    for (const ctrl of controls) {
-        if (
-            ctrl.tagName.toUpperCase() === 'INPUT' &&
-            (ctrl as HTMLInputElement).type === 'checkbox'
-        ) {
+    // Checkbox values need one cheap pre-pass: a single checkbox is boolean,
+    // while multiple checkboxes with the same name are stored as an array of
+    // checked option values.
+    for (let i = 0; i < controls.length; ++i) {
+        const ctrl = controls[i]
+        if (ctrl.tagName === 'INPUT' && (ctrl as HTMLInputElement).type === 'checkbox') {
             const name = ctrl.name
-            if (!checkboxGroups.has(name)) {
-                checkboxGroups.set(name, new Set())
-            }
-
-            let group = checkboxGroups.get(name)
-            // If the group doesn't exist yet, initialize it
-            if (!group) {
-                group = new Set<HTMLInputElement>()
-                checkboxGroups.set(name, group)
-            }
-            group.add(ctrl as HTMLInputElement)
+            checkboxCounts[name] = (checkboxCounts[name] || 0) + 1
         }
     }
 
-    // 2: Collect values from all supported controls.
-    for (const ctrl of controls) {
+    for (let i = 0; i < controls.length; ++i) {
+        const ctrl = controls[i]
         const name = ctrl.name
-        if (!name) continue
-
-        const tag = ctrl.tagName.toUpperCase()
+        const tag = ctrl.tagName
 
         if (tag === 'INPUT') {
             const input = ctrl as HTMLInputElement
-            const type = (input.type || '').toLowerCase()
-
+            const type = input.type
             if (type === 'checkbox') {
-                // A name is treated as a group only if there's more than one unique checkbox element.
-                const isGroup = (checkboxGroups.get(name)?.size ?? 0) > 1
-
-                if (isGroup) {
-                    if (!Array.isArray(values[name])) {
-                        values[name] = []
+                if (checkboxCounts[name] > 1) {
+                    let selected = values[name] as string[] | undefined
+                    if (!selected) {
+                        selected = []
+                        values[name] = selected
                     }
                     if (input.checked) {
-                        ;(values[name] as string[]).push(input.value)
+                        selected.push(input.value)
                     }
                 } else {
-                    // Single checkbox results in a simple boolean value.
                     values[name] = input.checked
                 }
             } else if (type === 'radio') {
                 if (input.checked) {
                     values[name] = input.value
-                } else if (!(name in values)) {
-                    // Initialize radio group with null if no option is checked yet.
+                } else if (values[name] === undefined) {
                     values[name] = null
                 }
             } else {
@@ -139,10 +120,11 @@ export const collectDomFormValues = (
             const select = ctrl as HTMLSelectElement
             if (select.multiple) {
                 const selected: string[] = []
-                const options = select.options
-                for (let j = 0; j < options.length; ++j) {
-                    if (options[j].selected) {
-                        selected.push(options[j].value)
+                const opts = select.options
+                for (let j = 0; j < opts.length; ++j) {
+                    const opt = opts[j]
+                    if (opt.selected) {
+                        selected.push(opt.value)
                     }
                 }
                 values[name] = selected
