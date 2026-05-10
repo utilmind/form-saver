@@ -2,12 +2,12 @@
 
 FormSaver is a small form/settings persistence toolkit.
 
-The repository now contains two implementations:
+The repository contains two implementations:
 
-- `react/` — the new React + TypeScript module for modern applications, including Next.js.
+- `react/` — a small React hook package for saving and restoring controlled form state in modern React applications, including Next.js. Its main public API is the custom `useFormSaver` hook; it is not a UI component and it does not render markup.
 - `jquery/` — the legacy jQuery / ES5 plugin kept for existing PHP + Bootstrap + jQuery projects.
 
-The React module is the current direction of the project. The jQuery plugin is preserved as-is for backward compatibility.
+The React hook package is the current direction of the project. The jQuery plugin is preserved as-is for backward compatibility.
 
 ## Current status
 
@@ -16,9 +16,9 @@ The React migration is in progress.
 See [`TODO-migration-to-react.md`](./TODO-migration-to-react.md) for the full migration checklist.
 See [`CHANGELOG.md`](./CHANGELOG.md) for release notes.
 
-## React module
+## React hook package
 
-The React version is designed around controlled form state:
+The code in `react/` is a reusable React hook package. It is designed around controlled form state:
 
 - restore saved values from `localStorage` or `sessionStorage` after client-side mount;
 - save values automatically when settings change;
@@ -69,11 +69,11 @@ export function SettingsPage() {
 }
 ```
 
-See [`react/README.md`](./react/README.md) for the React API draft.
+See [`react/README.md`](./react/README.md) for the React package API draft.
 
 The React storage format is intentionally independent from the legacy jQuery plugin storage format.
 
-React module checks:
+React package checks:
 
 ```bash
 cd react
@@ -90,7 +90,7 @@ It runs the same React checks automatically on pushes and pull requests, and als
 
 ## Demo app
 
-A small Vite demo is available under `react/demo/` for manual testing of the React hook.
+A small Vite demo is available under `react/demo/` for manual testing of the React hook package.
 
 ```bash
 cd react/demo

@@ -1,8 +1,10 @@
 # FormSaver React
 
-React + TypeScript rewrite of the original FormSaver idea.
+`form-saver-react` is a small React hook package for saving and restoring controlled form state from browser storage.
 
-This module does **not** wrap the legacy jQuery plugin. It provides a React-first API for controlled state.
+The main public API is the custom `useFormSaver` hook. This package is not a React component library: it does not render UI, provide styled controls, or wrap form elements. Instead, it gives React applications typed state helpers and browser-storage persistence utilities.
+
+This package does **not** wrap the legacy jQuery plugin. It provides a React-first API for controlled state.
 
 ## Goals
 
@@ -15,7 +17,7 @@ This module does **not** wrap the legacy jQuery plugin. It provides a React-firs
 
 ## Install / build
 
-This directory currently contains an early module draft.
+This directory contains the React hook package. Build output is written to `dist/`, which is the package entry point used by consuming applications.
 
 ```bash
 cd react
@@ -27,11 +29,11 @@ npm run typecheck
 npm run build
 ```
 
-The package is currently marked as `private: true` until the final API is reviewed.
+The package can be tested locally through `npm pack` or a `file:` dependency before it is published to an npm registry.
 
 ## Using it from another local project
 
-The demo app intentionally imports the library from `src/` through a Vite alias so that local changes are visible immediately during library development. A real application should usually consume the package entry point instead, because that is the same path npm users will eventually use.
+The demo app intentionally imports the hook package from `src/` through a Vite alias so that local changes are visible immediately during package development. A real application should usually consume the package entry point instead, because that is the same path npm users will eventually use.
 
 For a separate React or Next.js project, the closest workflow to a future npm install is:
 
@@ -63,7 +65,7 @@ For active local development, a path dependency is also possible:
 }
 ```
 
-With this mode, rebuild the library before testing package-output changes in the consuming app, because the package entry point points at `dist/`. Do not copy the demo alias into a real application unless you intentionally want the app bundler to compile this package from TypeScript source.
+With this mode, rebuild the package before testing package-output changes in the consuming app, because the package entry point points at `dist/`. Do not copy the demo alias into a real application unless you intentionally want the app bundler to compile this package from TypeScript source.
 
 In a Next.js App Router project, any component that calls `useFormSaver` must be a Client Component:
 
@@ -154,7 +156,7 @@ export function SettingsForm() {
 
 ## Code quality
 
-The React module uses:
+The React hook package uses:
 
 - Prettier for formatting;
 - ESLint for TypeScript/React correctness checks;
@@ -174,7 +176,7 @@ Use `npm run lint:fix` for auto-fixable lint issues and `npm run format` for for
 
 ## Tests
 
-The React module uses [Vitest](https://vitest.dev/).
+The React hook package uses [Vitest](https://vitest.dev/).
 The first test suite covers the storage helper, JSON envelope validation, `localStorage` / `sessionStorage`, merge behavior, SSR-safe behavior when browser storage is unavailable, value-key removal, and prefix-based cleanup.
 
 The storage tests use a small in-memory `Storage` implementation instead of `jsdom`, so they stay fast and focused.
@@ -193,7 +195,7 @@ npm run test
 
 ## Demo app
 
-A small Vite demo lives in `react/demo/`. It is intentionally simple and is meant for local manual testing of the hook.
+A small Vite demo lives in `react/demo/`. It is intentionally simple and is meant for local manual testing of the hook package.
 
 On first use, install the demo dependencies:
 
