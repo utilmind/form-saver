@@ -10,8 +10,6 @@
 export type { DomControlOptions } from './domControls'
 export {
     collectDomFormValues,
-    DEFAULT_DOM_CONTROL_SELECTOR,
-    DEFAULT_DOM_IGNORE_SELECTOR,
     getDomFormControls,
     resetDomFormValues,
     restoreDomFormValues

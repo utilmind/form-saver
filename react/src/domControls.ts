@@ -8,8 +8,8 @@
 
 import type { FormSaverValue, FormSaverValues } from './types'
 
-export const DEFAULT_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
-export const DEFAULT_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
+const DEF_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
+const DEF_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
 
 const UNSUPPORTED_INPUT_TYPES = {
     button: true,
@@ -59,14 +59,12 @@ const isSupportedControl = (
     ignoreSelector: string
 ): element is SupportedControl => {
     if (
-        !(element instanceof HTMLInputElement) &&
-        !(element instanceof HTMLTextAreaElement) &&
-        !(element instanceof HTMLSelectElement)
+        (!(element instanceof HTMLInputElement) &&
+            !(element instanceof HTMLTextAreaElement) &&
+            !(element instanceof HTMLSelectElement)) ||
+        !element.name ||
+        isIgnored(element, ignoreSelector)
     ) {
-        return false
-    }
-
-    if (!element.name || isIgnored(element, ignoreSelector)) {
         return false
     }
 
@@ -77,8 +75,8 @@ export const getDomFormControls = (
     root: ParentNode,
     options: DomControlOptions = {}
 ): SupportedControl[] => {
-    const controlSelector = options.controlSelector ?? DEFAULT_DOM_CONTROL_SELECTOR
-    const ignoreSelector = options.ignoreSelector ?? DEFAULT_DOM_IGNORE_SELECTOR
+    const controlSelector = options.controlSelector ?? DEF_DOM_CONTROL_SELECTOR
+    const ignoreSelector = options.ignoreSelector ?? DEF_DOM_IGNORE_SELECTOR
     const includePasswords = options.includePasswords ?? false
     const result: SupportedControl[] = []
     const controls = root.querySelectorAll(controlSelector)
@@ -213,13 +211,12 @@ const restoreCheckboxValue = (
 ) => {
     if (checkboxes.length === 1) {
         checkboxes[0].checked = Boolean(value)
-        return
-    }
-
-    const selectedValues = toStringArray(value)
-    for (let i = 0; i < checkboxes.length; ++i) {
-        const checkbox = checkboxes[i]
-        checkbox.checked = selectedValues.indexOf(checkbox.value) !== -1
+    } else {
+        const selectedValues = toStringArray(value)
+        for (let i = 0; i < checkboxes.length; ++i) {
+            const checkbox = checkboxes[i]
+            checkbox.checked = selectedValues.indexOf(checkbox.value) !== -1
+        }
     }
 }
 
@@ -235,13 +232,12 @@ const restoreRadioValue = (radios: HTMLInputElement[], value: FormSaverValue | u
 const restoreSelectValue = (select: HTMLSelectElement, value: FormSaverValue | undefined) => {
     if (!select.multiple) {
         select.value = value === undefined || value === null ? '' : String(value)
-        return
-    }
-
-    const selectedValues = toStringArray(value)
-    for (let i = 0; i < select.options.length; ++i) {
-        const option = select.options[i]
-        option.selected = selectedValues.indexOf(option.value) !== -1
+    } else {
+        const selectedValues = toStringArray(value)
+        for (let i = 0; i < select.options.length; ++i) {
+            const option = select.options[i]
+            option.selected = selectedValues.indexOf(option.value) !== -1
+        }
     }
 }
 
@@ -250,8 +246,9 @@ const restoreControlGroupValue = (
     value: FormSaverValue | undefined
 ): void => {
     const firstControl = controls[0]
+    const _isInput = isInput(firstControl)
 
-    if (isInput(firstControl)) {
+    if (_isInput) {
         const type = getInputType(firstControl)
 
         if (type === 'checkbox') {
@@ -263,17 +260,11 @@ const restoreControlGroupValue = (
             restoreRadioValue(controls as HTMLInputElement[], value)
             return
         }
-
-        firstControl.value = value === undefined || value === null ? '' : String(value)
-        return
     }
 
-    if (isTextArea(firstControl)) {
+    if (_isInput || isTextArea(firstControl)) {
         firstControl.value = value === undefined || value === null ? '' : String(value)
-        return
-    }
-
-    if (isSelect(firstControl)) {
+    } else if (isSelect(firstControl)) {
         restoreSelectValue(firstControl, value)
     }
 }
@@ -321,22 +312,18 @@ const resetSelectToDefault = (select: HTMLSelectElement): void => {
 }
 
 const resetControlToDefault = (control: SupportedControl): void => {
-    if (isInput(control)) {
+    const _isInput = isInput(control)
+    if (_isInput) {
         const type = getInputType(control)
         if (type === 'checkbox' || type === 'radio') {
             control.checked = control.defaultChecked
-        } else {
-            control.value = control.defaultValue
+            return
         }
-        return
     }
 
-    if (isTextArea(control)) {
+    if (_isInput || isTextArea(control)) {
         control.value = control.defaultValue
-        return
-    }
-
-    if (isSelect(control)) {
+    } else if (isSelect(control)) {
         resetSelectToDefault(control)
     }
 }
