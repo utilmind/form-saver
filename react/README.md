@@ -237,7 +237,59 @@ The DOM API is intended for **uncontrolled** native controls. Use `defaultValue`
 
 By default, the DOM API skips password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas.
 
-For custom React controls or UI-library widgets that do not render native named controls, prefer the typed `useFormSaver` API and its `bind.*` helpers, or mirror the value into a real named non-hidden native control and call `saveNow()` when the custom value changes.
+For custom React controls or UI-library widgets that do not render native named controls, prefer the typed `useFormSaver` API and its `bind.*` helpers. Use the DOM API only for standard named `input`, `textarea`, and `select` controls.
+
+### Custom React controls with `bind`
+
+Use `useFormSaver` when a value lives in React state, a UI-library component, or any component that is not a standard DOM control discovered by `useFormSaverDom`.
+
+If your custom component accepts native input props, pass the matching `bind.*` result through it:
+
+```tsx
+import type { InputHTMLAttributes } from 'react'
+import { useFormSaver } from 'form-saver-react'
+
+type ProfileForm = {
+    displayName: string
+    newsletter: boolean
+}
+
+const initialValues: ProfileForm = {
+    displayName: '',
+    newsletter: false
+}
+
+function TextField(props: InputHTMLAttributes<HTMLInputElement>) {
+    return <input {...props} />
+}
+
+export function ProfileForm() {
+    const form = useFormSaver<ProfileForm>({
+        storageKey: 'profile-form',
+        initialValues
+    })
+
+    return (
+        <form>
+            <TextField {...form.bind.text('displayName')} />
+
+            <label>
+                <input type="checkbox" {...form.bind.checkbox('newsletter')} />
+                Send newsletter
+            </label>
+        </form>
+    )
+}
+```
+
+If a UI component has a custom callback shape instead of a native `onChange` event, keep using `useFormSaver` and call `setValue` directly:
+
+```tsx
+<ToggleSwitch
+    checked={form.values.newsletter}
+    onCheckedChange={(checked) => form.setValue('newsletter', checked)}
+/>
+```
 
 ## Code quality
 
