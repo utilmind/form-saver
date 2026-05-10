@@ -174,6 +174,32 @@ describe('DOM control helpers', () => {
         })
     })
 
+    it('ignores nameless controls even with a broad custom selector', () => {
+        const root = new FakeRoot([
+            new FakeInput('', 'text', 'ignored'),
+            new FakeInput('title', 'text', 'Saved')
+        ])
+
+        expect(
+            collectDomFormValues(root as unknown as ParentNode, { controlSelector: 'input' })
+        ).toEqual({
+            title: 'Saved'
+        })
+    })
+
+    it('handles control names that match Object prototype keys', () => {
+        const root = new FakeRoot([
+            new FakeInput('constructor', 'checkbox', 'a', true),
+            new FakeInput('constructor', 'checkbox', 'b', false),
+            new FakeInput('toString', 'radio', 'yes', false)
+        ])
+
+        expect(collectDomFormValues(root as unknown as ParentNode)).toEqual({
+            constructor: ['a'],
+            toString: null
+        })
+    })
+
     it('restores values into native controls', () => {
         const title = new FakeInput('title', 'text')
         const notes = new FakeTextArea('notes')
