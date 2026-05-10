@@ -13,14 +13,7 @@
  * - Changes to binder behavior should be checked against the demo and tests.
  */
 
-import {
-    type ChangeEvent,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
-} from 'react'
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
