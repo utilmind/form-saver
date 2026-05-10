@@ -71,9 +71,8 @@ export const collectDomFormValues = (
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
     const values: FormSaverValues = {}
-    const len = controls.length
 
-    for (let i = 0; i < len; ++i) {
+    for (let i = 0; i < controls.length; ++i) {
         const ctrl = controls[i]
         const name = ctrl.name
         const tag = ctrl.tagName
