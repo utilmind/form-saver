@@ -47,7 +47,7 @@
             which refers to https://stackoverflow.com/questions/10281962/is-there-a-minlength-validation-attribute-in-html/10294291#10294291
 
 */
-(function (window, $, undefined) { // 'use strict';
+(function(window, $, undefined) { // 'use strict';
 
     /* If you would like to remove items with some specific prefix (storagePrefix) ONE BY ONE, use following:
 
@@ -58,19 +58,19 @@
             });
      */
 
-    // @config
+        // @config
     var defStorageKey = 'form',
 
         STR_STATUS_IS_LOADING = 'isLoadingStorage',
         classNoSave = '.no-save', // field with this class name will not be saved/restored. Used because we can't have unnamed "radio" groups.
-        // And it's serve butter than "readonly" attribute. Sometimes we still want to save/restore even "readonly" fields.
+                                 // And it's serve butter than "readonly" attribute. Sometimes we still want to save/restore even "readonly" fields.
         classNoReset = '.no-reset', // However if we reset entire form with native .reset() method, we can't exclude certain fields marked with .no-reset class.
 
         serveControls = 'input[name]:not([type="password"]):not([type="file"]):not([type="hidden"]):not([readonly]),textarea[name]:not([readonly]),select[name]', // also :not([type="button"]), but who is using <input type="button">'s nowadays?
-        getServeControls = function (includePasswords, includeFiles) { // remove fields from exclusion list
+        getServeControls = function(includePasswords, includeFiles) { // remove fields from exclusion list
             includePasswords = includePasswords
-                ? serveControls.replace(':not([type="password"])', '')
-                : serveControls; // don't skip passwords if we want to include password fields.
+                                ? serveControls.replace(':not([type="password"])', '')
+                                : serveControls; // don't skip passwords if we want to include password fields.
             if (includeFiles) {
                 includePasswords = includePasswords.replace(':not([type="files"])', ''); // don't skip files if we want to include file fields.
             }
@@ -85,7 +85,7 @@
 
         fieldUnloadFocus = 'fs-unload-field', // used to save a timestamp into SESSION storage. Set to FALSE to disable feature.
         fieldStoredDataTimestamp = '_fs_ts', // internal, for localStorage only. Not used in #address-line. Saves timestamp when the form content has been saved.
-        // AK: I don't want to use *temporarily* session storage for this purpose. I can imagine situations when we really need to know when the form data was saved to the storage.
+                                             // AK: I don't want to use *temporarily* session storage for this purpose. I can imagine situations when we really need to know when the form data was saved to the storage.
 
         // global function names
         nameSaveForm = 'saveForm',
@@ -97,12 +97,12 @@
 
         // jQuery plugins
         initPluginFnName = 'initFormSaver',
-        initUtilsFnName = initPluginFnName + 'Utils', // bonus utilities
+        initUtilsFnName  = initPluginFnName + 'Utils', // bonus utilities
 
         ctlCheckAll = '.check-all',
         ctlResetFields = '.reset-fields', // we hooking onClick event of buttons to reset parts of the form. (ATTN! reset != clear. TODO: support .clear-fields.)
         tokenResetDataAttr = 'reset-block', // data-reset-block=".CLASSNAME" PR data-reset-block="#id". All fields in specified block will be reset.
-        // ATTN! if you specify [#]id, it will be found in entire document. If this is [.]class, it will be found under the form.
+                                            // ATTN! if you specify [#]id, it will be found in entire document. If this is [.]class, it will be found under the form.
 
         // @private
         llStorage = window.lStorage || localStorage, // safe storage or regular localStorage
@@ -113,12 +113,12 @@
 
         // each input and select fields with ID being saved into localStorage.
         // storageKey can be object with set of options with the same properties as regular argument names.
-        saveForm = function ($form,
-            storageKey, // or OPTIONS
-            keep1stHash, // keep the first #hash intact, store all values in address line after it.
-            noUseHash, // don't use #hasline in the browser address line
-            noUseStorage, // prepare and return #hashline only. Without overwriting the localStorage. -1 (or another negative value) = use sessionStorage instead of localStorage.
-            storePasswords) { // by default it does not store data from password fields. But this can be enabled.
+        saveForm = function($form,
+                            storageKey, // or OPTIONS
+                            keep1stHash, // keep the first #hash intact, store all values in address line after it.
+                            noUseHash, // don't use #hasline in the browser address line
+                            noUseStorage, // prepare and return #hashline only. Without overwriting the localStorage. -1 (or another negative value) = use sessionStorage instead of localStorage.
+                            storePasswords) { // by default it does not store data from password fields. But this can be enabled.
             if (storageKey) {
                 // if this is object -- split into components
                 if (storageKey.storageKey) { // AK: it was named as 'storageName' in early versions! Please update legacy code!
@@ -128,7 +128,7 @@
                     storePasswords = storageKey.storePasswords;
                     storageKey = storageKey.storageKey;
                 }
-            } else {
+            }else {
                 storageKey = defStorageKey;
             }
 
@@ -136,7 +136,7 @@
 
                 $form = $($form), // for sure
 
-                doSave = function () {
+                doSave = function() {
                     if (noUseStorage || !$form.data(STR_STATUS_IS_LOADING)) { // not about to write OR not Loading right now...
                         var hash,
                             param = '',
@@ -151,67 +151,67 @@
 
                         // We selecting only fields with `name` attribute.
                         $form.find(getServeControls(storePasswords))
-                            .not(classNoSave) // additional filter that applies to selected (served) controls
-                            .each(function () { // ATTN! "readonly" fields saved too. Set "no-save" class (see classNoSave) to avoid the field.
-                                var el = this,
-                                    $el = $(el),
-                                    type = el.type,
-                                    name = el.name, // name must be present, we select only fields with `name` attribute
-                                    val = $el.val(), // The main difference between vanilla's .value and jQuery's .val() is that val() is able to retrieve arrays(). We don't want to parse arrays, jQuery is easier.
-                                    // TODO: we actually want to parse arrays to store them in native format (instead of string) into JSON.
-                                    storeFalseVal,
-                                    isDefaultChecked; // for checkboxes only
+                             .not(classNoSave) // additional filter that applies to selected (served) controls
+                                 .each(function() { // ATTN! "readonly" fields saved too. Set "no-save" class (see classNoSave) to avoid the field.
+                            var el = this,
+                                $el = $(el),
+                                type = el.type,
+                                name = el.name, // name must be present, we select only fields with `name` attribute
+                                val = $el.val(), // The main difference between vanilla's .value and jQuery's .val() is that val() is able to retrieve arrays(). We don't want to parse arrays, jQuery is easier.
+                                                 // TODO: we actually want to parse arrays to store them in native format (instead of string) into JSON.
+                                storeFalseVal,
+                                isDefaultChecked; // for checkboxes only
 
-                                // For radio we should check whether any value selected/checked. If nothing selected, then let's remove item.
-                                if ('radio' === type) {
-                                    if (!el.checked) {
-                                        // See, whether any radio box in group is checked. Unfortunately we should check it for each unchecked radio...
-                                        if ($form.find('input[type="radio"][name="' + name + '"]:checked').length) {
-                                            return; // continue
-                                        }
-                                        // Nothing checked. Let's remove value. (And this will be performed multiple times... But okay...)
-                                        val = null;
+                            // For radio we should check whether any value selected/checked. If nothing selected, then let's remove item.
+                            if ('radio' === type) {
+                                if (!el.checked) {
+                                    // See, whether any radio box in group is checked. Unfortunately we should check it for each unchecked radio...
+                                    if ($form.find('input[type="radio"][name="' + name + '"]:checked').length) {
+                                        return; // continue
                                     }
+                                    // Nothing checked. Let's remove value. (And this will be performed multiple times... But okay...)
+                                    val = null;
+                                }
 
-                                } else if ('checkbox' === type) {
-                                    isDefaultChecked = null !== el.getAttribute('checked'); // will be either TRUE or FALSE if "checkbox" attribute present. Only if it's NULL it's not there.
-                                    val = el.checked
+                            }else if ('checkbox' === type) {
+                                isDefaultChecked = null !== el.getAttribute('checked'); // will be either TRUE or FALSE if "checkbox" attribute present. Only if it's NULL it's not there.
+                                val = el.checked
                                         ? (isDefaultChecked ? null : 1) // falsy = when checked field which already supposed to be checked by default (and it has 'checked' attribute). No need to store = NULL.
                                         : ((storeFalseVal = isDefaultChecked) ? 0 : null); // not checked, but supposed to be checked by default -- save 0 (really unchecked). Otherwise no need to save = NULL.
-                                    // regular checkbox may have only 2 states: checked (truly) and unchecked (falsy). We saving state only for non-default values.
-                                    //   (*) Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
-                                    //       But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
+                                        // regular checkbox may have only 2 states: checked (truly) and unchecked (falsy). We saving state only for non-default values.
+                                        //   (*) Think about adding some data-[attribute], which, if specified, will save any state, both 0 and 1.
+                                        //       But it's shouldn't be default. In most (almost all) cases we just want to save state when it's checked or unchecked.
 
-                                } else if (Array.isArray(val)) { // <select multiple>?
-                                    val = JSON.stringify(val);
+                            }else if (Array.isArray(val)) { // <select multiple>?
+                                val = JSON.stringify(val);
+                            }
+
+                            // Update JSON object in storage:
+                            // - if we have value or explicit "false" value -> store/update
+                            // - otherwise (no value) -> delete key if it exists
+                            if (!noUseStorage) {
+                                if (val || storeFalseVal) {
+                                    store[name] = val;
+                                }else if (store && store.hasOwnProperty(name)) {
+                                    delete store[name];
                                 }
+                            }
 
-                                // Update JSON object in storage:
-                                // - if we have value or explicit "false" value -> store/update
-                                // - otherwise (no value) -> delete key if it exists
+                            // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
+                            if (val || storeFalseVal) { // Remember, that 0 or '' can be valid values. But we don't want to save empty strings for all input fields.
+                                param += '&' + name + '=' + encodeURIComponent(val);
+                            }
+
+                            if ($el.hasClass(saveDisabledStateClass)) {
+                                val = el.disabled ? 1 : 0;
                                 if (!noUseStorage) {
-                                    if (val || storeFalseVal) {
-                                        store[name] = val;
-                                    } else if (store && store.hasOwnProperty(name)) {
-                                        delete store[name];
-                                    }
+                                    theStorage.setItem(storageKey + saveDisabledStatePrefix + name, val);
                                 }
-
-                                // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
-                                if (val || storeFalseVal) { // Remember, that 0 or '' can be valid values. But we don't want to save empty strings for all input fields.
-                                    param += '&' + name + '=' + encodeURIComponent(val);
+                                if (val) { // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
+                                    param += '&' + saveDisabledStatePrefix + name + '=' + val;
                                 }
-
-                                if ($el.hasClass(saveDisabledStateClass)) {
-                                    val = el.disabled ? 1 : 0;
-                                    if (!noUseStorage) {
-                                        theStorage.setItem(storageKey + saveDisabledStatePrefix + name, val);
-                                    }
-                                    if (val) { // Don't check whether we need to update hash. Even if we don't, we have to RETURN full hash.
-                                        param += '&' + saveDisabledStatePrefix + name + '=' + val;
-                                    }
-                                }
-                            });
+                            }
+                        });
 
                         // Leave hash prefix intact.
                         if (keep1stHash && (hash = location.hash)) {
@@ -221,7 +221,7 @@
                             }
                             hash += param;
 
-                        } else { // no hash present yet. Create new hash. (This hash can be coordinates or bounding box in the mapping apps. The prefix (coordinates) will be added later on first zoom/move.)
+                        }else { // no hash present yet. Create new hash. (This hash can be coordinates or bounding box in the mapping apps. The prefix (coordinates) will be added later on first zoom/move.)
                             if (hash = param.slice(1)) {
                                 hash = '#' + hash;
                             }
@@ -253,12 +253,12 @@
             if (noWait) {
                 doSave();
                 noWait = 0; // reset
-            } else {
+            }else {
                 clearTimeout(saveTimer);
-                saveTimer = setTimeout(function () {
+                saveTimer = setTimeout(function() {
                     try {
                         doSave();
-                    } catch (err) { };
+                    }catch(err){};
                 }, 99);
             }
         },
@@ -272,20 +272,20 @@
         //     * The reason of this feature, as well as the .on('restore') event for the form is having a possibility to display some toaster message
         //       only when the form content was really restored. Message like 'Form content has been restored. Click 'Reset fields' button above to start filling from scratch'.
         //
-        loadForm = function ($form, storageKey,
-            keep1stHash,    // keep the first #hash intact, store all values in address line after it.
-            noUseHash,      // don't use #hashline in the browser address line
-            noUseStorage,   // prepare and return #hashline only. Without overwriting the localStorage. -1 (or another negative value) = use sessionStorage instead of localStorage.
-            storePasswords, // restorePassword in case of loading. By default it's FALSE, does NOT store/restore data into password fields. But this can be enabled.
-            onLoadStorage,  // Set up a handler function to get stored data (only from localStorage, not hash!) before it's restored
-            //  ...and have a possibility to override loaded data or simply CANCEL loading if something else (e.g. URL parameters)
-            //  require to not restore the form from the localStorage.
-            //  This event handler should return original or modified data object OR FALSE/NULL/0/{} to cancel loading from storage and use form from scratch.
+        loadForm = function($form, storageKey,
+                            keep1stHash,    // keep the first #hash intact, store all values in address line after it.
+                            noUseHash,      // don't use #hashline in the browser address line
+                            noUseStorage,   // prepare and return #hashline only. Without overwriting the localStorage. -1 (or another negative value) = use sessionStorage instead of localStorage.
+                            storePasswords, // restorePassword in case of loading. By default it's FALSE, does NOT store/restore data into password fields. But this can be enabled.
+                            onLoadStorage,  // Set up a handler function to get stored data (only from localStorage, not hash!) before it's restored
+                                            //  ...and have a possibility to override loaded data or simply CANCEL loading if something else (e.g. URL parameters)
+                                            //  require to not restore the form from the localStorage.
+                                            //  This event handler should return original or modified data object OR FALSE/NULL/0/{} to cancel loading from storage and use form from scratch.
 
-            keyField) {     // the most important field which must be present in order to have data restored.
-            // If it's not present in hash, but present in storage, we'll use storage and completely ignore #hash. (And vice versa, if it's present in #hash, we'll ignore storage.)
-            // Also 'keyField' is ignored when user reloads the page (e.g. on F5 key press) when some auto-saved field is focused.
-            // see more info below, in the description of the plugin options.
+                            keyField) {     // the most important field which must be present in order to have data restored.
+                                            // If it's not present in hash, but present in storage, we'll use storage and completely ignore #hash. (And vice versa, if it's present in #hash, we'll ignore storage.)
+                                            // Also 'keyField' is ignored when user reloads the page (e.g. on F5 key press) when some auto-saved field is focused.
+                                            // see more info below, in the description of the plugin options.
             if (storageKey) {
                 // if this is object -- split into components
                 if (storageKey.storageKey) {
@@ -299,7 +299,7 @@
                     storageKey = storageKey.storageKey;
                 }
 
-            } else {
+            }else {
                 storageKey = defStorageKey;
             }
 
@@ -317,21 +317,21 @@
                 storedData = (!noUseStorage && parseJSON(theStorage.getItem(storageKey))) || {}, // parseJSON from the "utilmind commons". We always need object (empty if data broken), not string.
 
                 // escape special characters to use the string as-is in regular expression. Idea: https://stackoverflow.com/questions/3446170/escape-string-for-use-in-javascript-regex
-                escapeRegExp = function (str) {
+                escapeRegExp = function(str) {
                     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& means the whole matched string
                 },
 
-                getHashComponent = function (componentName, /*var*/ m) {
+                getHashComponent = function(componentName, /*var*/ m) {
                     return (hashLine && (m = hashLine.match('(&|^)' + escapeRegExp(componentName) + '=([^&$]+)')))
                         ? decodeURIComponent(m[2])
                         : null; // important to return NULL if value just omitted. We make difference between empty strings and omitted values (represented by NULL), where maybe some default value should be used.
                 },
 
-                loadStoredItem = function (name) {
+                loadStoredItem = function(name) {
                     return undefined === storedData[name] ? null : storedData[name]; // null = use default. However we don't have undefined values here theStorage.getItem() also returns null if no value and never undefined.
                 },
 
-                loadHashOrStorage = function (name /*var*/, rslt) {
+                loadHashOrStorage = function(name /*var*/, rslt) {
                     // ATTN It's important to return NULL if value just omitted.
                     // We make difference between specified empty strings and NULLs, when maybe default value should be used.
 
@@ -346,10 +346,10 @@
                     return rslt;
                 },
 
-                checkKeyField = function (field) {
+                checkKeyField = function(field) {
                     if (getHashComponent(field)) {
                         noUseStorage = 1;
-                    } else {
+                    }else {
                         noUseHash = 1;
                     }
                     keyField = 0; // not needed anymore
@@ -395,7 +395,7 @@
                             hashLine = ''; // use storage instead.
                         }
 
-                    } else if (keyField && ('string' === typeof keyField)) { // if keyField used and name (string value) specified
+                    }else if (keyField && ('string' === typeof keyField)) { // if keyField used and name (string value) specified
                         checkKeyField(keyField);
                     }
                 }
@@ -404,24 +404,24 @@
             // AK: we don't checking whether storage item exits. We don't know for sure what is already stored. But it's not hard to step over each named item on the form.
             // $form = $($form); // for sure
             $form.data(STR_STATUS_IS_LOADING, 1)
-                .find(getServeControls(storePasswords))
-                .not(classNoSave) // additional filter that applies to selected (served) controls
-                .each(function () { // walk through the each form fields that have a "name" attribute.
-                    try {
-                        var el = this,
-                            $el = $(el),
-                            type = el.type,
-                            name = el.name;
+                    .find(getServeControls(storePasswords))
+                    .not(classNoSave) // additional filter that applies to selected (served) controls
+                        .each(function() { // walk through the each form fields that have a "name" attribute.
+                try {
+                    var el = this,
+                        $el = $(el),
+                        type = el.type,
+                        name = el.name;
 
-                        // if keyField is not string (no field name), but still specified, try to get #hash value for the first available field.
-                        if (keyField) {
-                            checkKeyField(name);
-                        }
+                    // if keyField is not string (no field name), but still specified, try to get #hash value for the first available field.
+                    if (keyField) {
+                        checkKeyField(name);
+                    }
 
-                        // CAUTION! We don't checking whether $el are exists. And even if it's exists, whether it's part of visible DOM.
-                        // Always use fresh $form pointer.
+                    // CAUTION! We don't checking whether $el are exists. And even if it's exists, whether it's part of visible DOM.
+                    // Always use fresh $form pointer.
 
-                        //if (name) { // unnamed fields not restored (UPD we selecting only fields with "name" attribute)
+                    //if (name) { // unnamed fields not restored (UPD we selecting only fields with "name" attribute)
                         // hashline has more priority. Even if there is stored value, check out hash first. But if hashline missing something -- use stored value.
 
                         var prevVal,
@@ -453,7 +453,7 @@
                             // ATTN! Some customized checkboxes may be initialized before the formSaver restore their state.
                             // Please make sure that formSaver initialized prior to customization of the checkbox control!
 
-                        } else if (storedVal) {
+                        }else if (storedVal) {
                             if ('radio' === type) {
                                 if (el.value === storedVal) {
                                     prevVal = el.checked; // if it's already checked previously (eg on the backend, with "checked" attribute), then 'change' will not be triggered.
@@ -464,25 +464,25 @@
                                     }
                                 }
 
-                            } else {
+                            }else {
                                 if (el.multiple && '[' === storedVal[0]) { // only if string representation of JSON array. TODO: support arrays! Not strings!
                                     try {
                                         storedVal = JSON.parse(storedVal);
                                         if (storedVal.length) {
                                             $el.find('option:selected').prop('selected', 0); // clear current selection (if exists occasionally)
-                                            $.each(storedVal, function (k, v) {
+                                            $.each(storedVal, function(k, v) {
                                                 $el.find('option[value="' + v + '"]').prop('selected', 1);
                                             });
                                             isSomethingLoaded = 1;
                                         }
-                                    } catch (err) { }
-                                } else {
+                                    }catch(err){}
+                                }else {
                                     prevVal = $el.val();
                                     if (prevVal !== storedVal) {
                                         // TODO 2023-10-29: we probably should have a custom overridable function to set up a value to the control.
                                         if (isTypeaheadSupported && $el.hasClass(typeaheadClass)) {
                                             $el.typeahead('val', storedVal);
-                                        } else {
+                                        }else {
                                             $el.val(storedVal);
                                         }
                                         $el.trigger('change');
@@ -492,23 +492,23 @@
                                     }
 
                                     if ($el.hasClass(saveDisabledStateClass)
-                                        && (0 < loadHashOrStorage(saveDisabledStatePrefix + name))) {
+                                            && (0 < loadHashOrStorage(saveDisabledStatePrefix + name))) {
                                         $el.prop('disabled', 1)
-                                            // this is very custom feature. Maybe worth to be moved to event handler. TODO: pls move it out of here!
+                                           // this is very custom feature. Maybe worth to be moved to event handler. TODO: pls move it out of here!
                                             // TODO: use custom event instead of the FontAwesome-specific classes!
                                             .closest('div').find('button i')
-                                            .removeClass('fa-eye')
-                                            .addClass('fa-eye-slash');
+                                                            .removeClass('fa-eye')
+                                                            .addClass('fa-eye-slash');
                                     }
                                 }
                             }
                         }
-                        //}
+                    //}
 
-                    } catch (err) {
-                        console.error(err);
-                    }
-                });
+                }catch(err) {
+                    console.error(err);
+                }
+            });
 
             // Save settings immediately.
             //   * save to hash line only if restored from storage (restored from storage == !hashLine)
@@ -516,7 +516,7 @@
             saveForm($form, storageKey, keep1stHash, noUseHash || !!hashLine, noUseStorage || !hashLine);
 
             $form.data(STR_STATUS_IS_LOADING, 0); // not undefined!! When it 0/FALSE we know that it WAS LOADED.
-            // (Also remember, that $form is not necessarily a <form>. It can be any DOM element.)
+                                           // (Also remember, that $form is not necessarily a <form>. It can be any DOM element.)
             if (isSomethingLoaded) {
                 // !!ATTN!! make sure that event handler is set up BEFORE the initFormSaver() executed!
                 // *hook* event prior to the loading!
@@ -539,7 +539,7 @@
         // Used to clear all storage keys with specified prefix (or list of prefixes).
         // For example to clear all stored data on user logout.
         // CAUTION: It's size optimized, so we don't check wether keyPrefix(es) are valid strings. They shouldn't be empty/falsy. Otherwise all storage will be cleared.
-        clearStorageKeys = function (keyPrefix, isSessionStorage) { // default is localStorage, but can be used for sessionStorage as well
+        clearStorageKeys = function(keyPrefix, isSessionStorage) { // default is localStorage, but can be used for sessionStorage as well
             var theStorage = isSessionStorage ? ssStorage : llStorage, // sessionStorage or localStorage
 
                 prefixes = Array.isArray(keyPrefix) ? keyPrefix : [keyPrefix], // or [String(keyPrefix)],
@@ -570,7 +570,7 @@
 
         // Remove single value from the stored data, preserving the rest of data.
         // Read, Decode, Remove specific keys from the associative array, Save updated data.
-        removeStoredJsonKeys = function (storageKey, keysToRemove, isSessionStorage) { // keysToRemove can be either single value or array of strings
+        removeStoredJsonKeys = function(storageKey, keysToRemove, isSessionStorage) { // keysToRemove can be either single value or array of strings
             var theStorage = isSessionStorage ? ssStorage : llStorage,
                 value = parseJSON(theStorage.getItem(storageKey)),
                 key;
@@ -591,8 +591,8 @@
 
     // Miscellaneous bonuses for the forms, which can be initialized and used even without formSaver.
     // Originally they all initialized together with formSaver, but later there was a need to use them separately for the controls in modal dialogs.
-    $.fn[initUtilsFnName] = function () { // if controlQuery not specified, it use defControlQuery
-        return this.each(function () { // multiple forms supported
+    $.fn[initUtilsFnName] = function() { // if controlQuery not specified, it use defControlQuery
+        return this.each(function() { // multiple forms supported
             var form = this,
                 $form = $(form);
 
@@ -604,7 +604,7 @@
                 // RESET part of the form. (ATTN! Reset means reset to original state, not clear the form.)
                 // ATTN! Reset usually means the returning to default state (eg values are already filled after form submission and this is their default state).
                 // In most cases you probably need to CLEAR the form instead.
-                $form.find(ctlResetFields).on('click', function (e) { // this must be a button, not anchor. I don't want to do an odd preventDefault().
+                $form.find(ctlResetFields).on('click', function(e) { // this must be a button, not anchor. I don't want to do an odd preventDefault().
                     e.preventDefault();
 
                     var resetBlock = $(this).data(tokenResetDataAttr),
@@ -613,17 +613,17 @@
 
                     if (resetBlock) {
                         $blockToReset = '#' === resetBlock[0]
-                            ? $(resetBlock)
-                            : $form.find(resetBlock)
+                                            ? $(resetBlock)
+                                            : $form.find(resetBlock)
 
-                        // ATTN! If we point entire form, all fields will be reset. We can't exclude them with .no-reset class.
-                    } else if ('FORM' !== form.tagName) {
+                    // ATTN! If we point entire form, all fields will be reset. We can't exclude them with .no-reset class.
+                    }else if ('FORM' !== form.tagName) {
                         $blockToReset = $form; // triggering of the 'reset' method works only for forms. If this is not real form, act like it's resetBlock.
                     }
 
                     if ($blockToReset.length) {
                         $fieldsToReset = $blockToReset.find(queryFieldsToReset) // we'd like to reset 'password' and 'file' inputs too
-                            .not(classNoReset); // find all input within specified block. UPD. don't use .not(:hidden)! It excluding invisible fields, not only with type="hidden".
+                                                            .not(classNoReset); // find all input within specified block. UPD. don't use .not(:hidden)! It excluding invisible fields, not only with type="hidden".
 
                         // ATTN! Entire form can be EASILY RESET with simple $form.trigger('reset')! Or with $form.resetForm() from utilmind' commons.
                         // However this implementation supposed to reset only PART of the form, inside of the block, specified in "data-reset-class" attribute.
@@ -631,14 +631,14 @@
                         // ...but if that reset block not specified, we resetting entire form anyway, see below...
 
                         // Let's clear the input of all text input fields. (But do not touch values of selects, checkboxes and radios.)
-                        $fieldsToReset.not('select,input[type="checkbox"],input[type="radio"]').each(function () {
+                        $fieldsToReset.not('select,input[type="checkbox"],input[type="radio"]').each(function() {
                             this.value = $(this).data('def') || this.defaultValue; // defaultValue must be better than this.getAttribute('value'); // try to use value specified in data-def="" (highest priority).
                             // BTW, see also 'webcalc.js' (calculium), where we used value in placeholder as default. But it's rare case.
                             // also... Remember that fields with type="numeric" perfectly accepting empty ('') values. If you have some different value, then it is set after form reset.
                         });
 
                         if ($form.typeahead) { // if typeaheads supported. Also maybe check existence of typeaheadClass?
-                            $fieldsToReset.filter('input.' + typeaheadClass).each(function () {
+                            $fieldsToReset.filter('input.' + typeaheadClass).each(function() {
                                 $(this).typeahead('val', $(this).data('def') || this.defaultValue); // returning to default state. Reset, not clear!
                             });
                         }
@@ -647,7 +647,7 @@
                         var $selectFields = $fieldsToReset.filter('select');
 
                         $selectFields.filter('[multiple]').find('option:selected').prop('selected', 0);
-                        $selectFields.not('[multiple]').each(function (e) {
+                        $selectFields.not('[multiple]').each(function(e) {
                             this.selectedIndex = 0;
                             //$(this)[0].selectedIndex = 0;
                         });
@@ -656,13 +656,13 @@
                         // ATTN! Reset does NOT CLEARS the form! It resets to default states. So after submission of the form, default states are the original form input!
                         $blockToReset.trigger('reset'); // this does nothing, but allows to hook it to take some actions for custom controls.
 
-                        // reset entire form. If you have custom control that require special processing -- hook $form.on('reset') event.
-                    } else {
+                    // reset entire form. If you have custom control that require special processing -- hook $form.on('reset') event.
+                    }else {
                         if ($form.resetForm) { // $.fn.resetForm from umcommons is exists?
                             // Do prefer resetForm(), because it's already has "typeahead" support.
                             // ATTN! Reset does NOT CLEARS the form! It resets to default states. So after submission of the form, default states are the original form input!
                             $form.resetForm(); // 'RESET' IS NOT 'CLEAR'! For clearing you might need different implementation!
-                        } else {
+                        }else {
                             // ATTN! Reset does NOT CLEARS the form! It resets to default states. So after submission of the form, default states are the original form input!
                             $form.trigger('reset');
                         }
@@ -676,14 +676,14 @@
                 });
 
                 // Check all / uncheck all.
-                $form.find(ctlCheckAll).on('click', function (e) {
+                $form.find(ctlCheckAll).on('click', function(e) {
                     e.preventDefault();
 
                     var $link = $(this),
                         isCheckAll = !!$link.data('check');
 
                     // find all checkboxes within element with class specified in data-within="..."
-                    $form.find($link.data('within') + ' input[type="checkbox"]').each(function () {
+                    $form.find($link.data('within') + ' input[type="checkbox"]').each(function() {
                         if (this.checked !== isCheckAll) { // it could be much easier, but I want to trigger
                             this.checked = isCheckAll;
                             $(this).trigger('change'/*, e*/); // we really need to inform the control about the change.
@@ -710,7 +710,7 @@
     // FYI: $form is not necessarily should be a <form> element. It can be any tag.
     //
     // ATTN!!! If something does not works, if form does not save something, CHECK OUT "name" ATTRIBUTE in the form fields! "name" is required to save input values!
-    $.fn[initPluginFnName] = function (options) { // if controlQuery not specified, it use defControlQuery
+    $.fn[initPluginFnName] = function(options) { // if controlQuery not specified, it use defControlQuery
         /* Valid options are:
 
                 storageKey: the name of key in storage (either localStorage or sessionStorage)
@@ -749,7 +749,7 @@
         if (!options) {
             options = {};
         }
-        return this.each(function () {
+        return this.each(function() {
             var $form = $(this),
                 isReset = options.reset;
 
@@ -760,20 +760,20 @@
                 if (isReset) { // of course we don't need to loadForm on reset.
                     (0 > options.noUseStorage ? ssStorage : llStorage) // use sessionStorage or localStorage
                         .removeItem('string' === typeof isReset
-                            ? isReset
-                            : options.storageKey || defStorageKey);
+                                        ? isReset
+                                        : options.storageKey || defStorageKey);
 
-                } else if (undefined === options.load || options.load) { // load by default
+                }else if (undefined === options.load || options.load) { // load by default
                     loadForm($form, options);
                 }
 
                 // save to storage on each change
                 $form.find(serveControls)
-                    .on('change', function () { // It can be 'change input paste', but we don't need to update storage so often.
+                    .on('change', function() { // It can be 'change input paste', but we don't need to update storage so often.
                         saveForm($form, options);
                     });
 
-                window.addEventListener('beforeunload', function (focusedEl) { // focusedEl is just declaration of variable
+                window.addEventListener('beforeunload', function(focusedEl) { // focusedEl is just declaration of variable
                     noWait = 1;
                     saveForm($form, options, 1); // 1 (true) means triggered from `window.beforeunload` event.
 
@@ -785,7 +785,7 @@
                     focusedEl = document.activeElement;
                     if (focusedEl && focusedEl.name) {
                         ssStorage.setItem(fieldUnloadFocus, focusedEl.name);
-                    } else {
+                    }else {
                         ssStorage.removeItem(fieldUnloadFocus);
                     }
                 });
@@ -798,13 +798,13 @@
 
     // saveForm
     // Plugin. Force saveForm() with exactly the same options used upon initialization of the formSaver().
-    $.fn[nameSaveForm] = function () {
-        return this.each(function () {
-            var $form = $(this),
-                initOptions = $form.data(initPluginFnName);
+    $.fn[nameSaveForm] = function() {
+        return this.each(function() {
+                var $form = $(this),
+                    initOptions = $form.data(initPluginFnName);
 
-            saveForm($form, initOptions);
-        });
+                saveForm($form, initOptions);
+            });
     };
 
 
