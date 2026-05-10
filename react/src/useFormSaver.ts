@@ -168,7 +168,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
         try {
             const stored = readStoredForm<TValues>(storageKey, { storage })
-
             if (!stored) {
                 return
             }
@@ -176,7 +175,6 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             const loadedValues = mapAfterLoadRef.current
                 ? mapAfterLoadRef.current(stored.values, stored.meta)
                 : stored.values
-
             if (!loadedValues) {
                 return
             }
