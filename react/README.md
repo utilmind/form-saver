@@ -1,10 +1,13 @@
 # FormSaver React
 
-`form-saver-react` is a small React hook package for saving and restoring controlled form state from browser storage.
+`form-saver-react` is a small React hook package for saving and restoring form/settings state from browser storage.
 
-The main public API is the custom `useFormSaver` hook. This package is not a React component library: it does not render UI, provide styled controls, or wrap form elements. Instead, it gives React applications typed state helpers and browser-storage persistence utilities.
+The package currently provides two public hook APIs:
 
-This package does **not** wrap the legacy jQuery plugin. It provides a React-first API for controlled state.
+- `useFormSaver` for typed controlled React state.
+- `useFormSaverDom` for jQuery-like auto-binding of uncontrolled native controls inside a DOM scope.
+
+This package does **not** wrap the legacy jQuery plugin. It provides React/TypeScript APIs built on top of the same core idea: save values into one readable JSON envelope and restore them after reload.
 
 ## Goals
 
@@ -14,6 +17,7 @@ This package does **not** wrap the legacy jQuery plugin. It provides a React-fir
 - Support `localStorage` and `sessionStorage`.
 - Preserve unknown stored keys when multiple related forms share one `storageKey`.
 - Keep the public API small and typed.
+- Support a DOM auto-binding mode for ordinary native controls when fully controlled state is too verbose.
 
 ## Install / build
 
@@ -52,7 +56,7 @@ npm install ../path/to/form-saver-react-0.1.0.tgz
 After that, import from the package name:
 
 ```tsx
-import { useFormSaver } from 'form-saver-react'
+import { useFormSaver, useFormSaverDom } from 'form-saver-react'
 ```
 
 For active local development, a path dependency is also possible:
@@ -67,7 +71,7 @@ For active local development, a path dependency is also possible:
 
 With this mode, rebuild the package before testing package-output changes in the consuming app, because the package entry point points at `dist/`. Do not copy the demo alias into a real application unless you intentionally want the app bundler to compile this package from TypeScript source.
 
-In a Next.js App Router project, any component that calls `useFormSaver` must be a Client Component:
+In a Next.js App Router project, any component that calls `useFormSaver` or `useFormSaverDom` must be a Client Component:
 
 ```tsx
 'use client'
@@ -154,6 +158,85 @@ export function SettingsForm() {
 ```
 
 
+## DOM auto-binding usage
+
+Use `useFormSaverDom` when your form mostly contains ordinary uncontrolled native controls and you do not want to spread bind helpers into every input.
+
+```tsx
+import { useFormSaverDom } from 'form-saver-react'
+
+export function SettingsForm() {
+    const formSaver = useFormSaverDom<HTMLFormElement>({
+        storageKey: 'settings-form',
+        debounceMs: 150,
+        mergeUnknownKeys: true
+    })
+
+    return (
+        <form ref={formSaver.ref}>
+            <input name="query" defaultValue="" />
+
+            <label>
+                <input type="checkbox" name="enabled" defaultChecked={false} />
+                Enabled
+            </label>
+
+            <label>
+                <input type="radio" name="mode" value="basic" defaultChecked />
+                Basic
+            </label>
+
+            <label>
+                <input type="radio" name="mode" value="advanced" />
+                Advanced
+            </label>
+
+            <select name="category" defaultValue="">
+                <option value="">Choose category</option>
+                <option value="general">General</option>
+                <option value="advanced">Advanced</option>
+            </select>
+
+            <select name="tags" multiple defaultValue={[]}>
+                <option value="alpha">Alpha</option>
+                <option value="beta">Beta</option>
+                <option value="gamma">Gamma</option>
+            </select>
+
+            <textarea name="notes" defaultValue="" />
+
+            <button type="button" onClick={formSaver.resetValues}>
+                Reset values
+            </button>
+
+            <button type="button" onClick={formSaver.clearStoredValues}>
+                Clear storage
+            </button>
+        </form>
+    )
+}
+```
+
+`useFormSaverDom` scans this selector inside the scoped root:
+
+```css
+input[name], textarea[name], select[name]
+```
+
+Supported native controls:
+
+- text-like inputs, including `number`, saved as strings;
+- `textarea`;
+- single `checkbox`, saved as boolean;
+- checkbox groups with the same `name`, saved as `string[]`;
+- radio groups, saved as the selected string value;
+- single `select`;
+- `select multiple`, saved as `string[]`.
+
+The DOM API is intended for **uncontrolled** native controls. Use `defaultValue` and `defaultChecked`, not React-controlled `value` / `checked`, unless you know exactly how your component reconciles DOM values.
+
+For custom React controls or UI-library widgets that do not render native named controls, use the typed `useFormSaver` API and its `bind.*` helpers, or add your own hidden/native input and call `saveNow()` when the custom value changes.
+
 ## Code quality
 
 The React hook package uses:
@@ -177,7 +260,7 @@ Use `npm run lint:fix` for auto-fixable lint issues and `npm run format` for for
 ## Tests
 
 The React hook package uses [Vitest](https://vitest.dev/).
-The first test suite covers the storage helper, JSON envelope validation, `localStorage` / `sessionStorage`, merge behavior, SSR-safe behavior when browser storage is unavailable, value-key removal, and prefix-based cleanup.
+The test suite covers the storage helper, JSON envelope validation, `localStorage` / `sessionStorage`, merge behavior, SSR-safe behavior when browser storage is unavailable, value-key removal, prefix-based cleanup, and native DOM control collection/restoration helpers.
 
 The storage tests use a small in-memory `Storage` implementation instead of `jsdom`, so they stay fast and focused.
 
@@ -294,6 +377,48 @@ The hook includes convenience binders for common controlled fields:
 - `bind.multiSelect(name)`
 
 You can ignore these helpers and wire controls manually with `values`, `setValue`, and `setValues`.
+
+
+
+### `useFormSaverDom(options)`
+
+```ts
+useFormSaverDom({
+    storageKey,
+    storage: 'localStorage',
+    enabled: true,
+    debounceMs: 150,
+    restoreOnMount: true,
+    version,
+    mergeUnknownKeys: true,
+    includePasswords: false,
+    controlSelector,
+    ignoreSelector,
+    mapBeforeSave,
+    mapAfterLoad,
+    onRestore,
+    onSave,
+    onError
+})
+```
+
+`useFormSaverDom` returns:
+
+```ts
+{
+    ref,
+    getValues,
+    saveNow,
+    restoreNow,
+    resetValues,
+    clearStoredValues,
+    hasRestored,
+    restoredAt,
+    lastSavedAt
+}
+```
+
+By default, password fields are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
 
 ## TypeScript form types
 

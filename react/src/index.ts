@@ -7,6 +7,15 @@
  * remains available internally.
  */
 
+export type { DomControlOptions } from './domControls'
+export {
+    collectDomFormValues,
+    DEFAULT_DOM_CONTROL_SELECTOR,
+    DEFAULT_DOM_IGNORE_SELECTOR,
+    getDomFormControls,
+    resetDomFormValues,
+    restoreDomFormValues
+} from './domControls'
 export {
     clearStorageKeys,
     getStorage,
@@ -26,8 +35,11 @@ export type {
     ReadStoredFormOptions,
     StoredFormSaverData,
     UseFormSaverBinders,
+    UseFormSaverDomOptions,
+    UseFormSaverDomResult,
     UseFormSaverOptions,
     UseFormSaverResult,
     WriteStoredFormOptions
 } from './types'
 export { useFormSaver } from './useFormSaver'
+export { useFormSaverDom } from './useFormSaverDom'

@@ -11,8 +11,9 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added the React + TypeScript FormSaver implementation under `react/`.
 - Added SSR-safe storage helpers for `localStorage` and `sessionStorage`.
 - Added `useFormSaver` with typed state helpers and form control binders.
+- Added the first DOM auto-binding phase with native control helpers and `useFormSaverDom` for uncontrolled forms/containers.
 - Added a Vite demo application under `react/demo/`.
-- Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, and SSR-safe storage behavior.
+- Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, SSR-safe storage behavior, and DOM control collection/restoration helpers.
 - Added ESLint and Prettier configuration for the React module.
 - Added GitHub Actions CI for React module checks and Vite demo build.
 

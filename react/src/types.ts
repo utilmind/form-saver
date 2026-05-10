@@ -12,7 +12,7 @@
  *   storage.ts.
  */
 
-import type { ChangeEventHandler } from 'react'
+import type { ChangeEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
 
@@ -68,6 +68,39 @@ export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<T
     onRestore?: (values: Partial<TValues>, meta: FormSaverMeta) => void
     onSave?: (values: Partial<TValues>, meta: FormSaverMeta) => void
     onError?: (error: unknown) => void
+}
+
+export interface UseFormSaverDomOptions {
+    storageKey: string
+    storage?: BrowserStorageName
+    enabled?: boolean
+    debounceMs?: number
+    restoreOnMount?: boolean
+    version?: string | number
+    mergeUnknownKeys?: boolean
+    includePasswords?: boolean
+    controlSelector?: string
+    ignoreSelector?: string
+    mapBeforeSave?: (values: Partial<FormSaverValues>) => Partial<FormSaverValues>
+    mapAfterLoad?: (
+        values: Partial<FormSaverValues>,
+        meta: FormSaverMeta
+    ) => Partial<FormSaverValues> | null | undefined
+    onRestore?: (values: Partial<FormSaverValues>, meta: FormSaverMeta) => void
+    onSave?: (values: Partial<FormSaverValues>, meta: FormSaverMeta) => void
+    onError?: (error: unknown) => void
+}
+
+export interface UseFormSaverDomResult<TRoot extends HTMLElement = HTMLElement> {
+    ref: RefCallback<TRoot>
+    getValues: () => FormSaverValues
+    saveNow: () => StoredFormSaverData<FormSaverValues> | null
+    restoreNow: () => StoredFormSaverData<FormSaverValues> | null
+    resetValues: () => StoredFormSaverData<FormSaverValues> | null
+    clearStoredValues: () => void
+    hasRestored: boolean
+    restoredAt?: number
+    lastSavedAt?: number
 }
 
 export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<TValues>> {

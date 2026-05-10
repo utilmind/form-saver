@@ -59,21 +59,22 @@ The new React implementation lives in `react/`.
 
 This phase is intentionally separate from the typed controlled-state `useFormSaver` API. Its goal is to provide a jQuery-like usage style for ordinary native controls inside a form or any DOM container. This phase is currently prioritized over the remaining packaging/polish tasks.
 
-- [ ] Keep the existing `useFormSaver` controlled-state API; do not replace it.
-- [ ] Decide the public name for the DOM API (`useFormSaverDom`, `useAutoFormSaver`, or similar).
-- [ ] Add native control read/write helpers.
-- [ ] Add value collection from a root element using `input[name]`, `textarea[name]`, and `select[name]`.
-- [ ] Add value restoration into native controls from stored values.
-- [ ] Support text-like inputs, textarea, single select, multi-select, checkbox, checkbox groups, and radio groups.
-- [ ] Preserve unknown stored keys by default when saving from a partial DOM scope.
-- [ ] Add `useFormSaverDom` hook for attaching FormSaver to a form or container via a React ref.
-- [ ] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStorage` helpers to the DOM hook.
+- [x] Keep the existing `useFormSaver` controlled-state API; do not replace it.
+- [x] Decide the public name for the DOM API. Decision: `useFormSaverDom` for the low-level hook; `FormSaverScope` will be added later as wrapper sugar.
+- [x] Add native control read/write helpers.
+- [x] Add value collection from a root element using `input[name]`, `textarea[name]`, and `select[name]`.
+- [x] Add value restoration into native controls from stored values.
+- [x] Support text-like inputs, textarea, single select, multi-select, checkbox, checkbox groups, and radio groups.
+- [x] Preserve unknown stored keys by default when saving from a partial DOM scope.
+- [x] Add `useFormSaverDom` hook for attaching FormSaver to a form or container via a React ref.
+- [ ] Add `FormSaverScope` wrapper component on top of `useFormSaverDom`, including an `asChild` mode that does not add an extra DOM element.
+- [x] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStoredValues` helpers to the DOM hook.
 - [ ] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option.
 - [ ] Add a demo section for DOM auto mode.
-- [ ] Add tests for DOM collect/restore behavior.
+- [x] Add tests for DOM collect/restore behavior.
 - [ ] Add hook tests for DOM restore/save/reset/clear behavior.
-- [ ] Document controlled vs uncontrolled usage clearly.
-- [ ] Document limitations for custom React controls and UI libraries that do not render native named controls.
+- [x] Document controlled vs uncontrolled usage clearly.
+- [x] Document limitations for custom React controls and UI libraries that do not render native named controls.
 
 ## Phase 4: Compatibility and behavior decisions
 
