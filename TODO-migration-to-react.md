@@ -17,7 +17,7 @@ The new React implementation lives in `react/`.
 ## Non-goals for the first React version
 
 - No jQuery dependency.
-- No automatic DOM scanning like `input[name]`, `textarea[name]`, `select[name]`.
+- No automatic DOM scanning in the first controlled-state hook API. A separate DOM-based auto-binding API can be added as its own phase.
 - No Twitter Typeahead or other non-standard jQuery plugin support.
 - No FontAwesome / Bootstrap-specific UI logic.
 - No URL hash synchronization in the first version.
@@ -53,6 +53,27 @@ The new React implementation lives in `react/`.
 - [x] Fix the demo restore loop caused by non-memoized callback options.
 - [x] Review the hook API against a typical Next.js settings form.
 - [ ] Decide whether the default debounce value should stay at `150ms`.
+
+
+## Priority Phase: DOM-based auto binding
+
+This phase is intentionally separate from the typed controlled-state `useFormSaver` API. Its goal is to provide a jQuery-like usage style for ordinary native controls inside a form or any DOM container. This phase is currently prioritized over the remaining packaging/polish tasks.
+
+- [ ] Keep the existing `useFormSaver` controlled-state API; do not replace it.
+- [ ] Decide the public name for the DOM API (`useFormSaverDom`, `useAutoFormSaver`, or similar).
+- [ ] Add native control read/write helpers.
+- [ ] Add value collection from a root element using `input[name]`, `textarea[name]`, and `select[name]`.
+- [ ] Add value restoration into native controls from stored values.
+- [ ] Support text-like inputs, textarea, single select, multi-select, checkbox, checkbox groups, and radio groups.
+- [ ] Preserve unknown stored keys by default when saving from a partial DOM scope.
+- [ ] Add `useFormSaverDom` hook for attaching FormSaver to a form or container via a React ref.
+- [ ] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStorage` helpers to the DOM hook.
+- [ ] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option.
+- [ ] Add a demo section for DOM auto mode.
+- [ ] Add tests for DOM collect/restore behavior.
+- [ ] Add hook tests for DOM restore/save/reset/clear behavior.
+- [ ] Document controlled vs uncontrolled usage clearly.
+- [ ] Document limitations for custom React controls and UI libraries that do not render native named controls.
 
 ## Phase 4: Compatibility and behavior decisions
 
@@ -101,3 +122,4 @@ The demo app exists now, so the next test step should focus on the storage helpe
 2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
 3. Should dirty-state tracking be exposed by the hook?
 4. Should validation integration be built-in or left entirely to application code?
+5. Should DOM auto mode support dynamically added controls via `MutationObserver`, or should users call `restoreNow()` manually after dynamic sections appear?
