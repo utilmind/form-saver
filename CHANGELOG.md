@@ -13,10 +13,11 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added `useFormSaver` with typed state helpers and form control binders.
 - Added the first DOM auto-binding phase with native control helpers and `useFormSaverDom` for uncontrolled forms/containers.
 - Added a Vite demo application under `react/demo/`.
-- Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, SSR-safe storage behavior, and DOM control collection/restoration helpers.
+- Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, SSR-safe storage behavior, DOM control collection/restoration helpers, React hook behavior, bind helpers, and SSR render safety.
 - Added ESLint and Prettier configuration for the React module.
 - Added GitHub Actions CI for React module checks and Vite demo build.
 - Added `FormSaverScope` and DOM auto-binding documentation for lightweight uncontrolled native control usage.
+- Added jsdom-based React hook tests for `useFormSaver` and `useFormSaverDom`.
 
 ### Changed
 

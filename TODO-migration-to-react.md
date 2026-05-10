@@ -72,7 +72,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option. Decision: use explicit `restoreNow()` for the MVP; skip `MutationObserver` to keep DOM mode small and avoid a permanent observer unless real usage proves it is needed.
 - [ ] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
 - [x] Add tests for DOM collect/restore behavior.
-- [ ] Add hook tests for DOM restore/save/reset/clear behavior.
+- [x] Add hook tests for DOM restore/save/reset/clear behavior.
 - [x] Document controlled vs uncontrolled usage clearly.
 - [x] Document limitations for custom React controls and UI libraries that do not render native named controls.
 
@@ -90,11 +90,11 @@ The demo app exists now, so the next test step should focus on the storage helpe
 
 - [x] Add unit tests for the storage helper.
 - [x] Add unit tests for merge behavior with unknown keys.
-- [ ] Add hook tests for restore, save, reset, and clear behavior.
-- [ ] Add tests for bind helpers.
+- [x] Add hook tests for restore, save, reset, and clear behavior.
+- [x] Add tests for bind helpers.
 - [x] Add storage-layer tests for SSR-safe behavior when browser storage is unavailable.
-- [ ] Add hook-level tests for SSR-safe behavior.
-- [ ] Add tests for storage error handling when storage access throws.
+- [x] Add hook-level tests for SSR-safe behavior.
+- [x] Add tests for storage error handling when storage access throws.
 
 ## Phase 6: Demo React application
 
@@ -108,8 +108,8 @@ The demo app exists now, so the next test step should focus on the storage helpe
 
 - [ ] Decide package name.
 - [x] Decide package manager (`npm`, `pnpm`, or `yarn`). Decision: npm, because `react/package-lock.json` is already present.
-- [ ] Add final build configuration.
-- [ ] Add `exports` / `types` fields for package consumers.
+- [x] Add final build configuration using TypeScript declaration output under `dist/`.
+- [x] Add `exports` / `types` fields for package consumers.
 - [x] Mark the React package as side-effect-free for production tree-shaking.
 - [x] Add formatting configuration.
 - [x] Add initial Vitest test configuration.
@@ -120,8 +120,9 @@ The demo app exists now, so the next test step should focus on the storage helpe
 
 ## Open questions
 
-1. Which Next.js and React versions should be considered the main target?
+1. Which React target should be documented as primary: React 18+, React 19+, or both? Current package peer dependency is `react >=18.0.0`.
 2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
-3. Should dirty-state tracking be exposed by the hook?
+3. Should dirty-state tracking be exposed by the hook, or should it stay internal for `beforeunload` flushing only?
 4. Should validation integration be built-in or left entirely to application code?
 5. DOM auto mode dynamic controls decision: call `restoreNow()` manually after dynamic sections appear for now; no `MutationObserver` in the MVP.
+6. Package name decision: keep `form-saver-react`, switch to `form-saver`, or use a scoped name such as `@utilmind/form-saver` if publishing is planned later?

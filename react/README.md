@@ -389,9 +389,9 @@ Use `npm run lint:fix` for auto-fixable lint issues and `npm run format` for for
 ## Tests
 
 The React hook package uses [Vitest](https://vitest.dev/).
-The test suite covers the storage helper, JSON envelope validation, `localStorage` / `sessionStorage`, merge behavior, SSR-safe behavior when browser storage is unavailable, value-key removal, prefix-based cleanup, and native DOM control collection/restoration helpers.
+The test suite covers the storage helper, JSON envelope validation, `localStorage` / `sessionStorage`, merge behavior, SSR-safe behavior when browser storage is unavailable, value-key removal, prefix-based cleanup, native DOM control collection/restoration helpers, `useFormSaver`, `useFormSaverDom`, bind helpers, reset/clear helpers, and server-side string rendering safety.
 
-The storage tests use a small in-memory `Storage` implementation instead of `jsdom`, so they stay fast and focused.
+Pure storage tests use a small in-memory `Storage` implementation instead of `jsdom`, so they stay fast and focused. React hook tests use `jsdom` only where a real DOM is useful.
 
 Run tests from the `react/` directory:
 

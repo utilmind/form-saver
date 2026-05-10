@@ -14,7 +14,7 @@ const tsconfigRootDir = dirname(fileURLToPath(import.meta.url))
 
 const TS_FILES = [
     'src/**/*.{ts,tsx}',
-    'test/**/*.ts',
+    'test/**/*.{ts,tsx}',
     'demo/src/**/*.{ts,tsx}',
     'demo/vite.config.ts',
     'vitest.config.ts'
