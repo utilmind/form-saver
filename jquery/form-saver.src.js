@@ -66,7 +66,8 @@
                                  // And it's serve butter than "readonly" attribute. Sometimes we still want to save/restore even "readonly" fields.
         classNoReset = '.no-reset', // However if we reset entire form with native .reset() method, we can't exclude certain fields marked with .no-reset class.
 
-        serveControls = 'input[name]:not([type="password"]):not([type="file"]):not([type="hidden"]):not([readonly]),textarea[name]:not([readonly]),select[name]', // also :not([type="button"]), but who is using <input type="button">'s nowadays?
+        // AK: maybe worth to additionally check whether type is not "button", "reset", "submit"?
+        serveControls = 'input[name]:not([type="password"]):not([type="file"]):not([type="image"]):not([type="hidden"]):not([readonly]),textarea[name]:not([readonly]),select[name]', // also :not([type="button"]), but who is using <input type="button">'s nowadays?
         getServeControls = function(includePasswords, includeFiles) { // remove fields from exclusion list
             includePasswords = includePasswords
                                 ? serveControls.replace(':not([type="password"])', '')

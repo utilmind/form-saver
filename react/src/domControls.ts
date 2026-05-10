@@ -10,7 +10,7 @@ import type { FormSaverValue, FormSaverValues } from './types'
 
 const DEF_DOM_CONTROL_SELECTOR = 'input[name], textarea[name], select[name]'
 const DEF_DOM_IGNORE_SELECTOR = '[data-form-saver-ignore], .no-save'
-const IGNORE_INPUT_TYPES = ['button', 'file', 'image', 'reset', 'submit'] // also when type="password", but we check password fields additionally. It may be allowed in rare cases, based on options.
+const IGNORE_INPUT_TYPES = ['file', 'image', 'button', 'reset', 'submit'] // we also ignore type="password", but we check password fields additionally. It may be allowed in rare cases, based on options.
 
 export interface DomControlOptions {
     /** Include password fields in saved values. Disabled by default for safety. */
