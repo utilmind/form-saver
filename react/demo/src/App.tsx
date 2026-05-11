@@ -29,13 +29,17 @@ import {
     useState
 } from 'react'
 
-const STORAGE_KEYS = {
-    controlled: 'form-saver-demo-controlled',
-    domHook: 'form-saver-demo-dom-hook',
-    scope: 'form-saver-demo-scope'
-} as const
+const DEMO_QUERY_PARAM = 'demo'
 
-type DemoTab = keyof typeof STORAGE_KEYS
+type DemoTab = 'controlled-bind' | 'dom-hook' | 'scope-component'
+
+const DEFAULT_DEMO_TAB: DemoTab = 'controlled-bind'
+
+const STORAGE_KEYS: Record<DemoTab, string> = {
+    'controlled-bind': 'form-saver-demo-controlled',
+    'dom-hook': 'form-saver-demo-dom-hook',
+    'scope-component': 'form-saver-demo-scope'
+}
 type DemoMode = 'basic' | 'advanced' | 'expert'
 type DemoDensity = 'comfortable' | 'compact' | 'dense'
 
@@ -73,21 +77,44 @@ const initialCustomAddon: CustomAddonSettings = {
 
 const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     {
-        id: 'controlled',
+        id: 'controlled-bind',
         label: '1. Controlled bind',
         description: 'Typed React state via useFormSaver and bind helpers.'
     },
     {
-        id: 'domHook',
+        id: 'dom-hook',
         label: '2. DOM hook',
         description: 'Attach useFormSaverDom to an uncontrolled form ref.'
     },
     {
-        id: 'scope',
+        id: 'scope-component',
         label: '3. Scope component',
         description: 'Use FormSaverScope asChild without adding a wrapper element.'
     }
 ]
+
+const isDemoTab = (value: string | null): value is DemoTab =>
+    value === 'controlled-bind' || value === 'dom-hook' || value === 'scope-component'
+
+const readDemoTabFromLocation = (): DemoTab => {
+    if (typeof window === 'undefined') {
+        return DEFAULT_DEMO_TAB
+    }
+
+    const tab = new URLSearchParams(window.location.search).get(DEMO_QUERY_PARAM)
+
+    return isDemoTab(tab) ? tab : DEFAULT_DEMO_TAB
+}
+
+const writeDemoTabToLocation = (tab: DemoTab): void => {
+    if (typeof window === 'undefined') {
+        return
+    }
+
+    const url = new URL(window.location.href)
+    url.searchParams.set(DEMO_QUERY_PARAM, tab)
+    window.history.pushState(null, '', url)
+}
 
 const readSavedJson = (storageKey: string): string => {
     if (typeof window === 'undefined') {
@@ -307,7 +334,7 @@ const renderNativeSettingsControls = (idPrefix: string) => (
 )
 
 const ControlledBindDemo = () => {
-    const storageKey = STORAGE_KEYS.controlled
+    const storageKey = STORAGE_KEYS['controlled-bind']
     const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
 
     const form = useFormSaver<DemoSettings>({
@@ -473,7 +500,7 @@ const ControlledBindDemo = () => {
 }
 
 const DomHookDemo = () => {
-    const storageKey = STORAGE_KEYS.domHook
+    const storageKey = STORAGE_KEYS['dom-hook']
     const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
 
     const domForm = useFormSaverDom<HTMLFormElement>({
@@ -566,7 +593,7 @@ const DomHookDemo = () => {
 }
 
 const ScopeComponentDemo = () => {
-    const storageKey = STORAGE_KEYS.scope
+    const storageKey = STORAGE_KEYS['scope-component']
     const formRef = useRef<HTMLFormElement | null>(null)
     const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
 
@@ -676,8 +703,25 @@ const ScopeComponentDemo = () => {
 }
 
 export const App = () => {
-    const [activeTab, setActiveTab] = useState<DemoTab>('controlled')
+    const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
     const activeDescription = demoTabs.find((tab) => tab.id === activeTab)?.description
+
+    useEffect(() => {
+        const handlePopState = (): void => {
+            setActiveTab(readDemoTabFromLocation())
+        }
+
+        window.addEventListener('popstate', handlePopState)
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState)
+        }
+    }, [])
+
+    const handleSelectTab = useCallback((tab: DemoTab): void => {
+        setActiveTab(tab)
+        writeDemoTabToLocation(tab)
+    }, [])
 
     return (
         <main className="app-shell">
@@ -698,7 +742,7 @@ export const App = () => {
                         className={tab.id === activeTab ? 'tab-button is-active' : 'tab-button'}
                         aria-current={tab.id === activeTab ? 'page' : undefined}
                         onClick={() => {
-                            setActiveTab(tab.id)
+                            handleSelectTab(tab.id)
                         }}
                     >
                         <span>{tab.label}</span>
@@ -709,9 +753,9 @@ export const App = () => {
 
             {activeDescription && <p className="tab-summary">{activeDescription}</p>}
 
-            {activeTab === 'controlled' && <ControlledBindDemo />}
-            {activeTab === 'domHook' && <DomHookDemo />}
-            {activeTab === 'scope' && <ScopeComponentDemo />}
+            {activeTab === 'controlled-bind' && <ControlledBindDemo />}
+            {activeTab === 'dom-hook' && <DomHookDemo />}
+            {activeTab === 'scope-component' && <ScopeComponentDemo />}
         </main>
     )
 }

@@ -431,7 +431,13 @@ npm run demo:build
 npm run demo:preview
 ```
 
-The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
+The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. The active tab is also reflected in the `demo` URL query parameter, so these links open a specific tab directly:
+
+- `http://localhost:5173/?demo=controlled-bind`
+- `http://localhost:5173/?demo=dom-hook`
+- `http://localhost:5173/?demo=scope-component`
+
+It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
 
 ## API draft
 

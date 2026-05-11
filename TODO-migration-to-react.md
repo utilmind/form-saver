@@ -70,6 +70,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStoredValues` helpers to the DOM hook.
 - [x] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option. Decision: use explicit `restoreNow()` for the MVP; skip `MutationObserver` to keep DOM mode small and avoid a permanent observer unless real usage proves it is needed.
 - [x] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
+- [x] Sync the active demo tab with the `demo` URL query parameter.
 - [x] Add tests for DOM collect/restore behavior.
 - [x] Add hook tests for DOM restore/save/reset/clear behavior.
 - [x] Document controlled vs uncontrolled usage clearly.
