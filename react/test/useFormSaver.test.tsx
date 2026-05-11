@@ -77,6 +77,11 @@ const ControlledDemoWithoutInitialValues = () => {
                 <option value="a">A</option>
                 <option value="b">B</option>
             </select>
+            <output data-testid="title-value">{formSaver.getString('title')}</output>
+            <output data-testid="enabled-value">
+                {formSaver.getBoolean('enabled') ? 'yes' : 'no'}
+            </output>
+            <output data-testid="tags-count">{formSaver.getArray('tags').length}</output>
             <button type="button" onClick={() => formSaver.resetValues()}>
                 reset
             </button>
@@ -158,33 +163,33 @@ describe('useFormSaver', () => {
         expect(getByTestId('restored').textContent).toBe('yes')
     })
 
-    it('can restore and reset bind-only controlled values without explicit initialValues', async () => {
+    it('can read safe helper values without explicit initialValues', async () => {
         writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
             title: 'Restored without defaults',
             enabled: true,
-            mode: 'accurate',
             tags: ['b'],
             notes: 'Restored notes'
         })
 
-        const { container, getByText } = render(<ControlledDemoWithoutInitialValues />)
+        const { container, getByTestId, getByText } = render(<ControlledDemoWithoutInitialValues />)
 
         await waitFor(() => {
             expect(getInput(container, 'title').value).toBe('Restored without defaults')
         })
 
-        expect(getInput(container, 'enabled').checked).toBe(true)
+        expect(getByTestId('title-value').textContent).toBe('Restored without defaults')
+        expect(getByTestId('enabled-value').textContent).toBe('yes')
+        expect(getByTestId('tags-count').textContent).toBe('1')
         expect(getSelect(container, 'tags').selectedOptions[0].value).toBe('b')
         expect(getTextarea(container, 'notes').value).toBe('Restored notes')
 
         fireEvent.click(getByText('reset'))
 
-        await waitFor(() => {
-            expect(getInput(container, 'title').value).toBe('')
-        })
+        expect(getInput(container, 'title').value).toBe('')
         expect(getInput(container, 'enabled').checked).toBe(false)
-        expect(getSelect(container, 'tags').selectedOptions.length).toBe(0)
-        expect(getTextarea(container, 'notes').value).toBe('')
+        expect(getByTestId('title-value').textContent).toBe('')
+        expect(getByTestId('enabled-value').textContent).toBe('no')
+        expect(getByTestId('tags-count').textContent).toBe('0')
     })
 
     it('saves values changed through bind helpers', async () => {

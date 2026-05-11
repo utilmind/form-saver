@@ -166,6 +166,13 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     resetValues: (nextValues?: TValues) => void
     clearStoredValues: () => void
     saveNow: () => void
+    getValue: <K extends FormSaverFieldName<TValues>>(
+        name: K,
+        fallbackValue?: TValues[K]
+    ) => TValues[K] | undefined
+    getString: <K extends FormSaverFieldName<TValues>>(name: K) => string
+    getBoolean: <K extends FormSaverFieldName<TValues>>(name: K) => boolean
+    getArray: <K extends FormSaverFieldName<TValues>>(name: K) => readonly FormSaverPrimitive[]
     hasRestored: boolean
     restoredAt?: number
     lastSavedAt?: number

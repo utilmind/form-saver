@@ -22,6 +22,7 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added jsdom-based React hook tests for `useFormSaver` and `useFormSaverDom`.
 - Added clearer documentation for controlled vs uncontrolled React controls.
 - Made `useFormSaver` `initialValues` optional for simple bind-only controlled forms.
+- Added safe controlled-state value helpers: `getValue`, `getString`, `getBoolean`, and `getArray`.
 
 ### Changed
 

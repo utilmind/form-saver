@@ -18,6 +18,7 @@ import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } f
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
     FormSaverFieldName,
+    FormSaverPrimitive,
     FormSaverValue,
     FormSaverValuesConstraint,
     UseFormSaverBinders,
@@ -45,6 +46,9 @@ const valueToSelectValue = (
 
 const valueToMultiSelectValue = (value: FormSaverValue | undefined): readonly string[] =>
     Array.isArray(value) ? value.map((item) => String(item)) : []
+
+const valueToArray = (value: FormSaverValue | undefined): readonly FormSaverPrimitive[] =>
+    Array.isArray(value) ? value : []
 
 // Stores the latest callback/value without making effects depend on its identity.
 type LatestRef<TValue> = {
@@ -340,6 +344,35 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         saveValues(values)
     }, [saveValues, values])
 
+    const getValue = useCallback(
+        <K extends FormSaverFieldName<TValues>>(
+            name: K,
+            fallbackValue?: TValues[K]
+        ): TValues[K] | undefined => {
+            const value = values[name]
+
+            return value === undefined ? fallbackValue : value
+        },
+        [values]
+    )
+
+    const getString = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): string =>
+            valueToInputString(values[name]),
+        [values]
+    )
+
+    const getBoolean = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): boolean => Boolean(values[name]),
+        [values]
+    )
+
+    const getArray = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): readonly FormSaverPrimitive[] =>
+            valueToArray(values[name]),
+        [values]
+    )
+
     const registerDefaultValue = useCallback(
         <K extends FormSaverFieldName<TValues>>(name: K, defaultValue: TValues[K]): void => {
             if (registeredDefaultsRef.current[name] === undefined) {
@@ -443,6 +476,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             saveNow,
+            getValue,
+            getString,
+            getBoolean,
+            getArray,
             hasRestored,
             restoredAt,
             lastSavedAt,
@@ -456,6 +493,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             saveNow,
+            getValue,
+            getString,
+            getBoolean,
+            getArray,
             hasRestored,
             restoredAt,
             lastSavedAt,

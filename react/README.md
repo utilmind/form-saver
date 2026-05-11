@@ -514,7 +514,24 @@ useFormSaver<TValues>({
 | `onError`            | `undefined`      | Called when restore/save transforms or callbacks throw. Storage access failures are ignored by the storage helpers.                                                                                         |
 
 
-When `initialValues` is omitted, `useFormSaver` learns field names from bind helpers during render and uses simple defaults: `''` for text-like fields, `false` for checkboxes, `[]` for multi-selects, and no selected radio value. This is convenient for simple bind-only forms. If you read `form.values` directly in your component logic, provide `initialValues` so every field has an explicit typed value from the first render.
+When `initialValues` is omitted, `useFormSaver` learns field names from bind helpers during render and uses simple defaults: `''` for text-like fields, `false` for checkboxes, `[]` for multi-selects, and no selected radio value. This is convenient for simple bind-only forms.
+
+Important: TypeScript generic types do not exist at runtime, so FormSaver cannot know your field list before you either pass `initialValues` or render bind helpers. If you read `form.values` directly in component logic, a property may be `undefined` until it is restored or changed. Either provide `initialValues` for fully typed first-render values, or use the safe access helpers:
+
+```tsx
+const form = useFormSaver<ContactFormValues>({
+    storageKey: 'contact-form'
+})
+
+const messagePreview = useMemo(() => {
+    const name = form.getString('name').trim()
+    const message = form.getString('message').trim()
+
+    return name ? `Name: ${name}\n${message}` : message
+}, [form])
+```
+
+Use `getString(name)` for text-like fields, `getBoolean(name)` for checkbox-like values, `getArray(name)` for multi-select-like values, and `getValue(name, fallback)` when you want to provide a field-specific fallback.
 
 ### Return value
 
@@ -527,12 +544,29 @@ When `initialValues` is omitted, `useFormSaver` learns field names from bind hel
   resetValues,
   clearStoredValues,
   saveNow,
+  getValue,
+  getString,
+  getBoolean,
+  getArray,
   hasRestored,
   restoredAt,
   lastSavedAt,
   bind,
 }
 ```
+
+### Safe value helpers
+
+These helpers are useful when `initialValues` is omitted but your component still needs to read a value for preview, validation, submit payload preparation, or conditional UI. They avoid errors such as `Cannot read properties of undefined` on first render.
+
+```tsx
+const name = form.getString('name') // '' when missing
+const enabled = form.getBoolean('enabled') // false when missing
+const tags = form.getArray('tags') // [] when missing
+const subject = form.getValue('subject', 'General')
+```
+
+They do not replace `initialValues` for complex forms; they are a lightweight alternative for fields where simple empty defaults are enough.
 
 ### Bind helpers
 
