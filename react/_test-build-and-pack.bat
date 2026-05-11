@@ -1,5 +1,11 @@
 @echo off
 
+call npm run test:run
+if errorlevel 1 (
+    echo Test failed.
+    exit /b 1
+)
+
 call npm run build
 if errorlevel 1 (
     echo Build failed.
