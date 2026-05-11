@@ -80,7 +80,7 @@
 
         typeaheadClass = 'tt-input', // twitter typeahead, which require to set value with typeahead('val', value) is natively supported here.
 
-        // disabeld state saver
+        // disabled state saver
         saveDisabledStateClass = 'save-disabled-state',
         saveDisabledStatePrefix = 'd-',
 
