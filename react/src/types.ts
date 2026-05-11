@@ -12,9 +12,10 @@
  *   storage.ts.
  */
 
-import type { ChangeEventHandler } from 'react'
+import type { ChangeEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
+export type FormSaverDomSaveEvent = 'change' | 'input'
 
 export type FormSaverPrimitive = string | number | boolean | null
 export type FormSaverValue = FormSaverPrimitive | FormSaverPrimitive[]
@@ -52,7 +53,7 @@ export interface WriteStoredFormOptions<
 
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {
     storageKey: string
-    initialValues: TValues
+    initialValues?: TValues
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
@@ -68,6 +69,40 @@ export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<T
     onRestore?: (values: Partial<TValues>, meta: FormSaverMeta) => void
     onSave?: (values: Partial<TValues>, meta: FormSaverMeta) => void
     onError?: (error: unknown) => void
+}
+
+export interface UseFormSaverDomOptions {
+    storageKey: string
+    storage?: BrowserStorageName
+    enabled?: boolean
+    debounceMs?: number
+    saveEvent?: FormSaverDomSaveEvent
+    restoreOnMount?: boolean
+    version?: string | number
+    mergeUnknownKeys?: boolean
+    includePasswords?: boolean
+    controlSelector?: string
+    ignoreSelector?: string
+    mapBeforeSave?: (values: Partial<FormSaverValues>) => Partial<FormSaverValues>
+    mapAfterLoad?: (
+        values: Partial<FormSaverValues>,
+        meta: FormSaverMeta
+    ) => Partial<FormSaverValues> | null | undefined
+    onRestore?: (values: Partial<FormSaverValues>, meta: FormSaverMeta) => void
+    onSave?: (values: Partial<FormSaverValues>, meta: FormSaverMeta) => void
+    onError?: (error: unknown) => void
+}
+
+export interface UseFormSaverDomResult<TRoot extends HTMLElement = HTMLElement> {
+    ref: RefCallback<TRoot>
+    getValues: () => FormSaverValues
+    saveNow: () => StoredFormSaverData<FormSaverValues> | null
+    restoreNow: () => StoredFormSaverData<FormSaverValues> | null
+    resetValues: () => StoredFormSaverData<FormSaverValues> | null
+    clearStoredValues: () => void
+    hasRestored: boolean
+    restoredAt?: number
+    lastSavedAt?: number
 }
 
 export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<TValues>> {
@@ -131,6 +166,13 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     resetValues: (nextValues?: TValues) => void
     clearStoredValues: () => void
     saveNow: () => void
+    getValue: <K extends FormSaverFieldName<TValues>>(
+        name: K,
+        fallbackValue?: TValues[K]
+    ) => TValues[K] | undefined
+    getString: <K extends FormSaverFieldName<TValues>>(name: K) => string
+    getBoolean: <K extends FormSaverFieldName<TValues>>(name: K) => boolean
+    getArray: <K extends FormSaverFieldName<TValues>>(name: K) => readonly FormSaverPrimitive[]
     hasRestored: boolean
     restoredAt?: number
     lastSavedAt?: number

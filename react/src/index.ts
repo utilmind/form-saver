@@ -7,6 +7,17 @@
  * remains available internally.
  */
 
+export type { DomControlOptions } from './domControls'
+export type { FormSaverScopeProps } from './FormSaverScope'
+export { FormSaverScope } from './FormSaverScope'
+//
+export {
+    collectDomFormValues,
+    getDomFormControls,
+    resetDomFormValues,
+    restoreDomFormValues
+} from './domControls'
+//
 export {
     clearStorageKeys,
     getStorage,
@@ -15,8 +26,10 @@ export {
     removeStoredValueKeys,
     writeStoredForm
 } from './storage'
+//
 export type {
     BrowserStorageName,
+    FormSaverDomSaveEvent,
     FormSaverFieldName,
     FormSaverMeta,
     FormSaverPrimitive,
@@ -26,8 +39,11 @@ export type {
     ReadStoredFormOptions,
     StoredFormSaverData,
     UseFormSaverBinders,
+    UseFormSaverDomOptions,
+    UseFormSaverDomResult,
     UseFormSaverOptions,
     UseFormSaverResult,
     WriteStoredFormOptions
 } from './types'
 export { useFormSaver } from './useFormSaver'
+export { useFormSaverDom } from './useFormSaverDom'

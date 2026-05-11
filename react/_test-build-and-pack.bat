@@ -1,5 +1,13 @@
 @echo off
 
+call npm run test:run
+if errorlevel 1 (
+    echo Test failed.
+    exit /b 1
+)
+
+if exist "dist" rmdir /s /q "dist"
+
 call npm run build
 if errorlevel 1 (
     echo Build failed.
@@ -14,4 +22,4 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Done. Use distrubution package from "..\_packs\".
+echo Done. Use distribution package from "..\_packs\".

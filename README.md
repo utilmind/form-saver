@@ -90,7 +90,7 @@ It runs the same React checks automatically on pushes and pull requests, and als
 
 ## Demo app
 
-A small Vite demo is available under `react/demo/` for manual testing of the React hook package.
+A small Vite demo is available under `react/demo/` for manual testing of the React hook package. It has three tabs covering controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`.
 
 ```bash
 cd react/demo

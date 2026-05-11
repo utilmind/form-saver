@@ -13,19 +13,12 @@
  * - Changes to binder behavior should be checked against the demo and tests.
  */
 
-import {
-    type ChangeEvent,
-    type MutableRefObject,
-    useCallback,
-    useEffect,
-    useMemo,
-    useRef,
-    useState
-} from 'react'
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
 import type {
     FormSaverFieldName,
+    FormSaverPrimitive,
     FormSaverValue,
     FormSaverValuesConstraint,
     UseFormSaverBinders,
@@ -54,8 +47,15 @@ const valueToSelectValue = (
 const valueToMultiSelectValue = (value: FormSaverValue | undefined): readonly string[] =>
     Array.isArray(value) ? value.map((item) => String(item)) : []
 
+const valueToArray = (value: FormSaverValue | undefined): readonly FormSaverPrimitive[] =>
+    Array.isArray(value) ? value : []
+
 // Stores the latest callback/value without making effects depend on its identity.
-const useLatestRef = <TValue>(value: TValue): MutableRefObject<TValue> => {
+type LatestRef<TValue> = {
+    current: TValue
+}
+
+const useLatestRef = <TValue>(value: TValue): LatestRef<TValue> => {
     const ref = useRef(value)
 
     ref.current = value
@@ -94,6 +94,7 @@ const getMultiSelectValues = (select: HTMLSelectElement): string[] =>
 const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
     initialValues: TValues,
+    registeredDefaults: Partial<TValues>,
     restoreUnknownKeys: boolean
 ): Partial<TValues> => {
     const result: Partial<TValues> = {}
@@ -106,8 +107,16 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
         return result
     }
 
-    // Only pick keys that exist in initialValues
+    // Pick explicit initial-value keys first.
     for (const key in initialValues) {
+        const val = values[key]
+        if (val !== undefined) {
+            result[key] = val
+        }
+    }
+
+    // Then pick keys learned from bind helpers when initialValues is omitted.
+    for (const key in registeredDefaults) {
         const val = values[key]
         if (val !== undefined) {
             result[key] = val
@@ -117,15 +126,35 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     return result
 }
 
+const buildResetValues = <TValues extends FormSaverValuesConstraint<TValues>>(
+    initialValues: TValues,
+    registeredDefaults: Partial<TValues>
+): TValues => {
+    const resetValues = {} as TValues
+
+    // Defaults learned from bind helpers cover the optional-initialValues case.
+    for (const key in registeredDefaults) {
+        resetValues[key] = registeredDefaults[key] as TValues[typeof key]
+    }
+
+    // Explicit initialValues always win over inferred binder defaults.
+    for (const key in initialValues) {
+        resetValues[key] = initialValues[key]
+    }
+
+    return resetValues
+}
+
+// Hook
 export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>(
     options: UseFormSaverOptions<TValues>
 ): UseFormSaverResult<TValues> => {
     const {
         storageKey,
         initialValues,
-        storage = 'localStorage',
+        storage = 'localStorage', // 'localStorage' or 'sessionStorage'
         enabled = true,
-        debounceMs = 150,
+        debounceMs = 150, // ms
         saveOnMount = false,
         version,
         mergeUnknownKeys = true,
@@ -137,9 +166,13 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         onError
     } = options
 
-    const initialValuesRef = useRef(initialValues)
+    const emptyInitialValuesRef = useRef<TValues>({} as TValues)
+    const initialValuesRef = useRef<TValues>(initialValues ?? emptyInitialValuesRef.current)
+    const registeredDefaultsRef = useRef<Partial<TValues>>({})
     const skipNextSaveRef = useRef(!saveOnMount)
-    const [values, setValuesState] = useState<TValues>(initialValues)
+    const [values, setValuesState] = useState<TValues>(
+        initialValues ?? emptyInitialValuesRef.current
+    )
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
@@ -151,7 +184,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
     // Keep the latest initial values available for reset without forcing rehydration.
     useEffect(() => {
-        initialValuesRef.current = initialValues
+        initialValuesRef.current = initialValues ?? emptyInitialValuesRef.current
     }, [initialValues])
 
     // Keep the skip flag in sync when the storage target changes.
@@ -182,6 +215,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             const knownValues = pickKnownValues<TValues>(
                 loadedValues,
                 initialValuesRef.current,
+                registeredDefaultsRef.current,
                 restoreUnknownKeys
             )
 
@@ -291,7 +325,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     }, [])
 
     const resetValues = useCallback((nextValues?: TValues): void => {
-        setValuesState(nextValues ?? initialValuesRef.current)
+        setValuesState(
+            nextValues ??
+                buildResetValues<TValues>(initialValuesRef.current, registeredDefaultsRef.current)
+        )
     }, [])
 
     const clearStoredValues = useCallback((): void => {
@@ -307,65 +344,127 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         saveValues(values)
     }, [saveValues, values])
 
+    const getValue = useCallback(
+        <K extends FormSaverFieldName<TValues>>(
+            name: K,
+            fallbackValue?: TValues[K]
+        ): TValues[K] | undefined => {
+            const value = values[name]
+
+            return value === undefined ? fallbackValue : value
+        },
+        [values]
+    )
+
+    const getString = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): string =>
+            valueToInputString(values[name]),
+        [values]
+    )
+
+    const getBoolean = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): boolean => Boolean(values[name]),
+        [values]
+    )
+
+    const getArray = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K): readonly FormSaverPrimitive[] =>
+            valueToArray(values[name]),
+        [values]
+    )
+
+    const registerDefaultValue = useCallback(
+        <K extends FormSaverFieldName<TValues>>(name: K, defaultValue: TValues[K]): void => {
+            if (registeredDefaultsRef.current[name] === undefined) {
+                registeredDefaultsRef.current[name] = defaultValue
+            }
+        },
+        []
+    )
+
     // Convenience binders for common controlled form controls.
     const bind = useMemo<UseFormSaverBinders<TValues>>(
         () => ({
-            text: <K extends FormSaverFieldName<TValues>>(name: K) => ({
-                name,
-                value: valueToInputString(values[name]),
-                onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                    setValue(name, event.target.value as TValues[K])
-                }
-            }),
+            text: <K extends FormSaverFieldName<TValues>>(name: K) => {
+                registerDefaultValue(name, '' as TValues[K])
 
-            textarea: <K extends FormSaverFieldName<TValues>>(name: K) => ({
-                name,
-                value: valueToInputString(values[name]),
-                onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
-                    setValue(name, event.target.value as TValues[K])
+                return {
+                    name,
+                    value: valueToInputString(values[name]),
+                    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                        setValue(name, event.target.value as TValues[K])
+                    }
                 }
-            }),
+            },
 
-            checkbox: <K extends FormSaverFieldName<TValues>>(name: K) => ({
-                name,
-                checked: Boolean(values[name]),
-                onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                    setValue(name, event.target.checked as TValues[K])
+            textarea: <K extends FormSaverFieldName<TValues>>(name: K) => {
+                registerDefaultValue(name, '' as TValues[K])
+
+                return {
+                    name,
+                    value: valueToInputString(values[name]),
+                    onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
+                        setValue(name, event.target.value as TValues[K])
+                    }
                 }
-            }),
+            },
+
+            checkbox: <K extends FormSaverFieldName<TValues>>(name: K) => {
+                registerDefaultValue(name, false as TValues[K])
+
+                return {
+                    name,
+                    checked: Boolean(values[name]),
+                    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                        setValue(name, event.target.checked as TValues[K])
+                    }
+                }
+            },
 
             radio: <K extends FormSaverFieldName<TValues>>(
                 name: K,
                 optionValue: NonNullable<TValues[K]>
-            ) => ({
-                name,
-                value: valueToSelectValue(optionValue),
-                checked: Object.is(values[name], optionValue),
-                onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                    if (event.target.checked) {
-                        setValue(name, optionValue)
+            ) => {
+                registerDefaultValue(name, '' as TValues[K])
+
+                return {
+                    name,
+                    value: valueToSelectValue(optionValue),
+                    checked: Object.is(values[name], optionValue),
+                    onChange: (event: ChangeEvent<HTMLInputElement>) => {
+                        if (event.target.checked) {
+                            setValue(name, optionValue)
+                        }
                     }
                 }
-            }),
+            },
 
-            select: <K extends FormSaverFieldName<TValues>>(name: K) => ({
-                name,
-                value: valueToSelectValue(values[name]),
-                onChange: (event: ChangeEvent<HTMLSelectElement>) => {
-                    setValue(name, event.target.value as TValues[K])
-                }
-            }),
+            select: <K extends FormSaverFieldName<TValues>>(name: K) => {
+                registerDefaultValue(name, '' as TValues[K])
 
-            multiSelect: <K extends FormSaverFieldName<TValues>>(name: K) => ({
-                name,
-                multiple: true,
-                value: valueToMultiSelectValue(values[name]),
-                onChange: (event: ChangeEvent<HTMLSelectElement>) => {
-                    setValue(name, getMultiSelectValues(event.target) as TValues[K])
+                return {
+                    name,
+                    value: valueToSelectValue(values[name]),
+                    onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+                        setValue(name, event.target.value as TValues[K])
+                    }
                 }
-            })
+            },
+
+            multiSelect: <K extends FormSaverFieldName<TValues>>(name: K) => {
+                registerDefaultValue(name, [] as unknown as TValues[K])
+
+                return {
+                    name,
+                    multiple: true,
+                    value: valueToMultiSelectValue(values[name]),
+                    onChange: (event: ChangeEvent<HTMLSelectElement>) => {
+                        setValue(name, getMultiSelectValues(event.target) as TValues[K])
+                    }
+                }
+            }
         }),
-        [setValue, values]
+        [registerDefaultValue, setValue, values]
     )
 
     return useMemo<UseFormSaverResult<TValues>>(
@@ -377,6 +476,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             saveNow,
+            getValue,
+            getString,
+            getBoolean,
+            getArray,
             hasRestored,
             restoredAt,
             lastSavedAt,
@@ -390,6 +493,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             saveNow,
+            getValue,
+            getString,
+            getBoolean,
+            getArray,
             hasRestored,
             restoredAt,
             lastSavedAt,
