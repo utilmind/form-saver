@@ -2,9 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-This project is currently in early React migration stage. The legacy jQuery plugin remains available under `jquery/`.
-
-## [2026-02-04]
+## [2026-05-11]: Migration from jQuery to React
 
 ### Added
 
