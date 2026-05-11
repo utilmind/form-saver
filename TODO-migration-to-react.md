@@ -54,7 +54,6 @@ The new React implementation lives in `react/`.
 - [x] Review the hook API against a typical Next.js settings form.
 - [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; controlled state uses it after React state changes, while DOM mode defaults to browser `change` events and uses debounce only after a save-triggering event.
 
-
 ## Priority Phase: DOM-based auto binding
 
 This phase is intentionally separate from the typed controlled-state `useFormSaver` API. Its goal is to provide a jQuery-like usage style for ordinary native controls inside a form or any DOM container. This phase is currently prioritized over the remaining packaging/polish tasks.
@@ -70,7 +69,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Add `FormSaverScope` wrapper component on top of `useFormSaverDom`, including an `asChild` mode that does not add an extra DOM element.
 - [x] Add `saveNow`, `restoreNow`, `resetValues`, and `clearStoredValues` helpers to the DOM hook.
 - [x] Decide whether dynamically added controls should be handled only by explicit `restoreNow()` or by a `MutationObserver` option. Decision: use explicit `restoreNow()` for the MVP; skip `MutationObserver` to keep DOM mode small and avoid a permanent observer unless real usage proves it is needed.
-- [ ] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
+- [x] Add a demo section for DOM auto mode, including `FormSaverScope asChild`.
 - [x] Add tests for DOM collect/restore behavior.
 - [x] Add hook tests for DOM restore/save/reset/clear behavior.
 - [x] Document controlled vs uncontrolled usage clearly.
@@ -99,14 +98,15 @@ The demo app exists now, so the next test step should focus on the storage helpe
 ## Phase 6: Demo React application
 
 - [x] Create a small one-page React test application.
-- [x] Include text inputs, textarea, checkbox, radio buttons, single select, and multi-select.
+- [x] Add three demo tabs for controlled bind helpers, `useFormSaverDom`, and `FormSaverScope asChild`.
+- [x] Include text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, and multi-select.
 - [x] Show current saved JSON for debugging.
 - [x] Add buttons for reset, clear storage, and manual save.
 - [x] Make the demo easy to build and run locally.
 
 ## Phase 7: Packaging and publishing
 
-- [ ] Decide package name.
+- [x] Decide package name. Decision: public brand name is FormSaver. The npm package name cannot use uppercase letters; unscoped `form-saver` is already occupied, so keep `form-saver-react` for local development and use a scoped name such as `@utilmind/form-saver` if publishing is planned later.
 - [x] Decide package manager (`npm`, `pnpm`, or `yarn`). Decision: npm, because `react/package-lock.json` is already present.
 - [x] Add final build configuration using TypeScript declaration output under `dist/`.
 - [x] Add `exports` / `types` fields for package consumers.
@@ -123,4 +123,3 @@ The demo app exists now, so the next test step should focus on the storage helpe
 1. React compatibility decision: document React 18+ as the supported baseline for now. The peer dependency remains broad (`react >=18.0.0`), so React 19 is allowed without making the library React-19-only.
 2. Which stack should the one-page demo use: Vite, Next.js, or both? Decision: Vite demo under `react/demo/`; no Next.js demo is needed for now.
 3. DOM auto mode dynamic controls decision: call `restoreNow()` manually after dynamic sections appear for now; no `MutationObserver` in the MVP.
-4. Package name decision: keep `form-saver-react`, switch to `form-saver`, or use a scoped name such as `@utilmind/form-saver` if publishing is planned later?

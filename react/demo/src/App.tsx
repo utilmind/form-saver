@@ -1,23 +1,45 @@
 /**
  * Demo application for the local development playground.
  *
- * This component intentionally exercises the public useFormSaver API across the
- * supported native form controls: text inputs, checkbox, radio group, select,
- * multi-select, number input, and textarea. It also shows raw persisted JSON so
- * storage-format regressions are visible while developing the package.
+ * The demo intentionally shows all public React usage styles:
+ * - controlled state via useFormSaver and bind helpers;
+ * - DOM auto-binding via useFormSaverDom;
+ * - DOM auto-binding via FormSaverScope with asChild.
  *
  * Developer notes:
  * - Treat this file as demo-only code, not part of the published library API.
  * - Keep the scenarios here aligned with the README examples and storage tests.
  */
 
-import { useFormSaver } from 'form-saver-react'
-import { type ChangeEvent, useCallback, useMemo, useState } from 'react'
+import {
+    collectDomFormValues,
+    FormSaverScope,
+    removeStoredForm,
+    useFormSaver,
+    useFormSaverDom,
+    writeStoredForm
+} from 'form-saver-react'
+import {
+    type ChangeEvent,
+    type FormEvent,
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
+} from 'react'
 
-const STORAGE_KEY = 'form-saver-react-demo-settings'
+const STORAGE_KEYS = {
+    controlled: 'form-saver-demo-controlled',
+    domHook: 'form-saver-demo-dom-hook',
+    scope: 'form-saver-demo-scope'
+} as const
 
+type DemoTab = keyof typeof STORAGE_KEYS
 type DemoMode = 'basic' | 'advanced' | 'expert'
 type DemoDensity = 'comfortable' | 'compact' | 'dense'
+
+type CustomReviewLevel = 'quick' | 'full'
 
 interface DemoSettings {
     searchQuery: string
@@ -27,6 +49,11 @@ interface DemoSettings {
     tags: string[]
     resultsPerPage: number
     notes: string
+}
+
+interface CustomAddonSettings {
+    customReviewed: boolean
+    customReviewLevel: CustomReviewLevel
 }
 
 const initialSettings: DemoSettings = {
@@ -39,13 +66,36 @@ const initialSettings: DemoSettings = {
     notes: ''
 }
 
-const readSavedJson = (): string => {
+const initialCustomAddon: CustomAddonSettings = {
+    customReviewed: false,
+    customReviewLevel: 'quick'
+}
+
+const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
+    {
+        id: 'controlled',
+        label: '1. Controlled bind',
+        description: 'Typed React state via useFormSaver and bind helpers.'
+    },
+    {
+        id: 'domHook',
+        label: '2. DOM hook',
+        description: 'Attach useFormSaverDom to an uncontrolled form ref.'
+    },
+    {
+        id: 'scope',
+        label: '3. Scope component',
+        description: 'Use FormSaverScope asChild without adding a wrapper element.'
+    }
+]
+
+const readSavedJson = (storageKey: string): string => {
     if (typeof window === 'undefined') {
         return 'Browser storage is not available during server rendering.'
     }
 
     try {
-        const raw = window.localStorage.getItem(STORAGE_KEY)
+        const raw = window.localStorage.getItem(storageKey)
 
         if (!raw) {
             return 'Nothing saved yet.'
@@ -64,32 +114,220 @@ const readSavedJson = (): string => {
 const formatTimestamp = (timestamp: number | undefined): string =>
     timestamp ? new Date(timestamp).toLocaleString() : 'never'
 
-export const App = () => {
+const useStorageDebug = (storageKey: string) => {
     const [savedJson, setSavedJson] = useState<string>('Loading...')
 
     const refreshSavedJson = useCallback((): void => {
-        setSavedJson(readSavedJson())
-    }, [])
+        setSavedJson(readSavedJson(storageKey))
+    }, [storageKey])
+
+    useEffect(() => {
+        refreshSavedJson()
+    }, [refreshSavedJson])
+
+    return {
+        savedJson,
+        refreshSavedJson
+    }
+}
+
+interface DebugPanelProps {
+    title: string
+    storageKey: string
+    savedJson: string
+    restoredAt?: number
+    lastSavedAt?: number
+    stateLabel?: string
+    currentState?: unknown
+}
+
+const DebugPanel = ({
+    title,
+    storageKey,
+    savedJson,
+    restoredAt,
+    lastSavedAt,
+    stateLabel,
+    currentState
+}: DebugPanelProps) => (
+    <aside className="debug-card">
+        <h2>{title}</h2>
+        <dl>
+            <div>
+                <dt>Storage key</dt>
+                <dd>
+                    <code>{storageKey}</code>
+                </dd>
+            </div>
+            <div>
+                <dt>Restored at</dt>
+                <dd>{formatTimestamp(restoredAt)}</dd>
+            </div>
+            <div>
+                <dt>Last saved at</dt>
+                <dd>{formatTimestamp(lastSavedAt)}</dd>
+            </div>
+        </dl>
+
+        {stateLabel && currentState !== undefined && (
+            <>
+                <h3>{stateLabel}</h3>
+                <pre>{JSON.stringify(currentState, null, 2)}</pre>
+            </>
+        )}
+
+        <h3>Saved localStorage JSON</h3>
+        <pre>{savedJson}</pre>
+    </aside>
+)
+
+interface CustomAddonProps {
+    form: ReturnType<typeof useFormSaver<CustomAddonSettings>>
+}
+
+const CustomAddon = ({ form }: CustomAddonProps) => (
+    <fieldset className="form-row radio-group custom-addon">
+        <legend>Controlled add-on saved with bind helpers</legend>
+        <label className="checkbox-row-inline">
+            <input
+                data-form-saver-ignore
+                type="checkbox"
+                {...form.bind.checkbox('customReviewed')}
+            />
+            Mark this custom setting as reviewed
+        </label>
+        <div className="segmented-control" aria-label="Review level">
+            <label>
+                <input
+                    data-form-saver-ignore
+                    type="radio"
+                    {...form.bind.radio('customReviewLevel', 'quick')}
+                />
+                <span>Quick</span>
+            </label>
+            <label>
+                <input
+                    data-form-saver-ignore
+                    type="radio"
+                    {...form.bind.radio('customReviewLevel', 'full')}
+                />
+                <span>Full</span>
+            </label>
+        </div>
+        <small>
+            These controls are ignored by DOM auto-binding and saved by the controlled bind API
+            instead.
+        </small>
+    </fieldset>
+)
+
+const renderNativeSettingsControls = (idPrefix: string) => (
+    <>
+        <div className="form-row">
+            <label htmlFor={`${idPrefix}-projectName`}>Project name</label>
+            <input
+                id={`${idPrefix}-projectName`}
+                name="projectName"
+                type="text"
+                placeholder="Type and reload the page..."
+                defaultValue=""
+            />
+        </div>
+
+        <div className="form-row checkbox-row">
+            <label>
+                <input type="checkbox" name="emailNotifications" defaultChecked={false} />
+                Enable email notifications
+            </label>
+        </div>
+
+        <fieldset className="form-row radio-group">
+            <legend>Mode</legend>
+            <label>
+                <input type="radio" name="mode" value="basic" defaultChecked />
+                Basic
+            </label>
+            <label>
+                <input type="radio" name="mode" value="advanced" />
+                Advanced
+            </label>
+            <label>
+                <input type="radio" name="mode" value="expert" />
+                Expert
+            </label>
+        </fieldset>
+
+        <div className="form-row">
+            <label htmlFor={`${idPrefix}-density`}>Density</label>
+            <select id={`${idPrefix}-density`} name="density" defaultValue="comfortable">
+                <option value="comfortable">Comfortable</option>
+                <option value="compact">Compact</option>
+                <option value="dense">Dense</option>
+            </select>
+        </div>
+
+        <fieldset className="form-row radio-group">
+            <legend>Features</legend>
+            <label>
+                <input type="checkbox" name="features" value="ocr" />
+                OCR
+            </label>
+            <label>
+                <input type="checkbox" name="features" value="llm" />
+                LLM
+            </label>
+            <label>
+                <input type="checkbox" name="features" value="geo" />
+                Geo lookup
+            </label>
+        </fieldset>
+
+        <div className="form-row">
+            <label htmlFor={`${idPrefix}-tags`}>Tags</label>
+            <select id={`${idPrefix}-tags`} name="tags" multiple size={4} defaultValue={[]}>
+                <option value="alpha">Alpha</option>
+                <option value="beta">Beta</option>
+                <option value="gamma">Gamma</option>
+                <option value="delta">Delta</option>
+            </select>
+            <small>Hold Ctrl/Cmd to select multiple values.</small>
+        </div>
+
+        <div className="form-row">
+            <label htmlFor={`${idPrefix}-notes`}>Notes</label>
+            <textarea
+                id={`${idPrefix}-notes`}
+                name="notes"
+                rows={5}
+                placeholder="Write a note..."
+                defaultValue=""
+            />
+        </div>
+    </>
+)
+
+const ControlledBindDemo = () => {
+    const storageKey = STORAGE_KEYS.controlled
+    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
 
     const form = useFormSaver<DemoSettings>({
-        storageKey: STORAGE_KEY,
+        storageKey,
         initialValues: initialSettings,
         debounceMs: 150,
         mergeUnknownKeys: true,
         onRestore: refreshSavedJson,
         onSave: refreshSavedJson,
         onError: (error: unknown): void => {
-            // Keep demo errors visible without interrupting the UI.
-            console.error('FormSaver demo error:', error)
+            console.error('FormSaver controlled demo error:', error)
         }
     })
 
     const statusText = useMemo((): string => {
         if (!form.hasRestored) {
-            return 'Restoring saved values...'
+            return 'Restoring saved controlled values...'
         }
 
-        return 'Ready. Change any field and the state will be saved automatically.'
+        return 'Ready. Each field is controlled by React state and saved through bind helpers.'
     }, [form.hasRestored])
 
     const handleResultsPerPageChange = useCallback(
@@ -103,7 +341,8 @@ export const App = () => {
 
     const handleResetValues = useCallback((): void => {
         form.resetValues()
-    }, [form])
+        refreshSavedJson()
+    }, [form, refreshSavedJson])
 
     const handleClearStorage = useCallback((): void => {
         form.clearStoredValues()
@@ -116,19 +355,10 @@ export const App = () => {
     }, [form, refreshSavedJson])
 
     return (
-        <main className="app-shell">
-            <section className="hero-card">
-                <p className="eyebrow">FormSaver React Demo</p>
-                <h1>Persist form settings in localStorage</h1>
-                <p className="hero-text">
-                    This Vite demo exercises the React/TypeScript hook with text inputs, checkbox,
-                    radio buttons, select, multi-select, number input, and textarea.
-                </p>
-                <div className="status-row">
-                    <span>{statusText}</span>
-                </div>
-            </section>
-
+        <section className="tab-content">
+            <div className="status-row">
+                <span>{statusText}</span>
+            </div>
             <section className="layout-grid">
                 <form
                     className="settings-card"
@@ -228,32 +458,260 @@ export const App = () => {
                     </div>
                 </form>
 
-                <aside className="debug-card">
-                    <h2>Debug</h2>
-                    <dl>
-                        <div>
-                            <dt>Storage key</dt>
-                            <dd>
-                                <code>{STORAGE_KEY}</code>
-                            </dd>
-                        </div>
-                        <div>
-                            <dt>Restored at</dt>
-                            <dd>{formatTimestamp(form.restoredAt)}</dd>
-                        </div>
-                        <div>
-                            <dt>Last saved at</dt>
-                            <dd>{formatTimestamp(form.lastSavedAt)}</dd>
-                        </div>
-                    </dl>
-
-                    <h3>Current React state</h3>
-                    <pre>{JSON.stringify(form.values, null, 2)}</pre>
-
-                    <h3>Saved localStorage JSON</h3>
-                    <pre>{savedJson}</pre>
-                </aside>
+                <DebugPanel
+                    title="Controlled debug"
+                    storageKey={storageKey}
+                    restoredAt={form.restoredAt}
+                    lastSavedAt={form.lastSavedAt}
+                    stateLabel="Current React state"
+                    currentState={form.values}
+                    savedJson={savedJson}
+                />
             </section>
+        </section>
+    )
+}
+
+const DomHookDemo = () => {
+    const storageKey = STORAGE_KEYS.domHook
+    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+
+    const domForm = useFormSaverDom<HTMLFormElement>({
+        storageKey,
+        debounceMs: 150,
+        saveEvent: 'input',
+        mergeUnknownKeys: true,
+        onRestore: refreshSavedJson,
+        onSave: refreshSavedJson,
+        onError: (error: unknown): void => {
+            console.error('FormSaver DOM hook demo error:', error)
+        }
+    })
+
+    const customForm = useFormSaver<CustomAddonSettings>({
+        storageKey,
+        initialValues: initialCustomAddon,
+        debounceMs: 150,
+        mergeUnknownKeys: true,
+        onRestore: refreshSavedJson,
+        onSave: refreshSavedJson,
+        onError: (error: unknown): void => {
+            console.error('FormSaver DOM hook custom bind error:', error)
+        }
+    })
+
+    const handleSubmit = useCallback((event: FormEvent<HTMLFormElement>): void => {
+        event.preventDefault()
+    }, [])
+
+    const handleSaveNow = useCallback((): void => {
+        domForm.saveNow()
+        customForm.saveNow()
+        refreshSavedJson()
+    }, [customForm, domForm, refreshSavedJson])
+
+    const handleResetValues = useCallback((): void => {
+        domForm.resetValues()
+        customForm.resetValues()
+        refreshSavedJson()
+    }, [customForm, domForm, refreshSavedJson])
+
+    const handleClearStorage = useCallback((): void => {
+        domForm.clearStoredValues()
+        refreshSavedJson()
+    }, [domForm, refreshSavedJson])
+
+    return (
+        <section className="tab-content">
+            <div className="status-row">
+                <span>
+                    This tab uses <code>useFormSaverDom</code>. Standard named controls are captured
+                    automatically; the custom add-on is saved with bind helpers.
+                </span>
+            </div>
+            <section className="layout-grid">
+                <form ref={domForm.ref} className="settings-card" onSubmit={handleSubmit}>
+                    {renderNativeSettingsControls('dom-hook')}
+                    <CustomAddon form={customForm} />
+
+                    <div className="button-row">
+                        <button type="button" onClick={handleSaveNow}>
+                            Save now
+                        </button>
+                        <button type="button" onClick={handleResetValues}>
+                            Reset values
+                        </button>
+                        <button
+                            type="button"
+                            className="danger-button"
+                            onClick={handleClearStorage}
+                        >
+                            Clear storage
+                        </button>
+                    </div>
+                </form>
+
+                <DebugPanel
+                    title="DOM hook debug"
+                    storageKey={storageKey}
+                    restoredAt={domForm.restoredAt || customForm.restoredAt}
+                    lastSavedAt={domForm.lastSavedAt || customForm.lastSavedAt}
+                    stateLabel="Controlled add-on state"
+                    currentState={customForm.values}
+                    savedJson={savedJson}
+                />
+            </section>
+        </section>
+    )
+}
+
+const ScopeComponentDemo = () => {
+    const storageKey = STORAGE_KEYS.scope
+    const formRef = useRef<HTMLFormElement | null>(null)
+    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+
+    const customForm = useFormSaver<CustomAddonSettings>({
+        storageKey,
+        initialValues: initialCustomAddon,
+        debounceMs: 150,
+        mergeUnknownKeys: true,
+        onRestore: refreshSavedJson,
+        onSave: refreshSavedJson,
+        onError: (error: unknown): void => {
+            console.error('FormSaver scope custom bind error:', error)
+        }
+    })
+
+    const handleSubmit = useCallback((event: FormEvent<HTMLFormElement>): void => {
+        event.preventDefault()
+    }, [])
+
+    const saveNativeControls = useCallback((): void => {
+        const form = formRef.current
+
+        if (form) {
+            writeStoredForm(storageKey, collectDomFormValues(form), {
+                mergeUnknownKeys: true
+            })
+        }
+    }, [storageKey])
+
+    const handleSaveNow = useCallback((): void => {
+        saveNativeControls()
+        customForm.saveNow()
+        refreshSavedJson()
+    }, [customForm, refreshSavedJson, saveNativeControls])
+
+    const handleResetValues = useCallback((): void => {
+        const form = formRef.current
+
+        if (form) {
+            form.reset()
+            saveNativeControls()
+        }
+
+        customForm.resetValues()
+        refreshSavedJson()
+    }, [customForm, refreshSavedJson, saveNativeControls])
+
+    const handleClearStorage = useCallback((): void => {
+        removeStoredForm(storageKey)
+        customForm.clearStoredValues()
+        refreshSavedJson()
+    }, [customForm, refreshSavedJson, storageKey])
+
+    return (
+        <section className="tab-content">
+            <div className="status-row">
+                <span>
+                    This tab uses <code>{'<FormSaverScope asChild>'}</code>. The component clones
+                    the form and attaches its ref without creating an extra DOM element.
+                </span>
+            </div>
+            <section className="layout-grid">
+                <FormSaverScope
+                    asChild
+                    storageKey={storageKey}
+                    mergeUnknownKeys
+                    onRestore={refreshSavedJson}
+                    onSave={refreshSavedJson}
+                    onError={(error: unknown): void => {
+                        console.error('FormSaverScope demo error:', error)
+                    }}
+                >
+                    <form ref={formRef} className="settings-card" onSubmit={handleSubmit}>
+                        {renderNativeSettingsControls('scope')}
+                        <CustomAddon form={customForm} />
+
+                        <div className="button-row">
+                            <button type="button" onClick={handleSaveNow}>
+                                Save now
+                            </button>
+                            <button type="button" onClick={handleResetValues}>
+                                Reset values
+                            </button>
+                            <button
+                                type="button"
+                                className="danger-button"
+                                onClick={handleClearStorage}
+                            >
+                                Clear storage
+                            </button>
+                        </div>
+                    </form>
+                </FormSaverScope>
+
+                <DebugPanel
+                    title="Scope component debug"
+                    storageKey={storageKey}
+                    restoredAt={customForm.restoredAt}
+                    lastSavedAt={customForm.lastSavedAt}
+                    stateLabel="Controlled add-on state"
+                    currentState={customForm.values}
+                    savedJson={savedJson}
+                />
+            </section>
+        </section>
+    )
+}
+
+export const App = () => {
+    const [activeTab, setActiveTab] = useState<DemoTab>('controlled')
+    const activeDescription = demoTabs.find((tab) => tab.id === activeTab)?.description
+
+    return (
+        <main className="app-shell">
+            <section className="hero-card">
+                <p className="eyebrow">FormSaver React Demo</p>
+                <h1>Persist form settings in localStorage</h1>
+                <p className="hero-text">
+                    This Vite demo shows the three public React usage styles: controlled bind
+                    helpers, DOM auto-binding through a hook, and the lightweight scope component.
+                </p>
+            </section>
+
+            <nav className="tab-list" aria-label="FormSaver demo modes">
+                {demoTabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        className={tab.id === activeTab ? 'tab-button is-active' : 'tab-button'}
+                        aria-current={tab.id === activeTab ? 'page' : undefined}
+                        onClick={() => {
+                            setActiveTab(tab.id)
+                        }}
+                    >
+                        <span>{tab.label}</span>
+                        <small>{tab.description}</small>
+                    </button>
+                ))}
+            </nav>
+
+            {activeDescription && <p className="tab-summary">{activeDescription}</p>}
+
+            {activeTab === 'controlled' && <ControlledBindDemo />}
+            {activeTab === 'domHook' && <DomHookDemo />}
+            {activeTab === 'scope' && <ScopeComponentDemo />}
         </main>
     )
 }

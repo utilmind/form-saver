@@ -172,7 +172,6 @@ export function SettingsForm() {
 }
 ```
 
-
 ## DOM auto-binding usage
 
 Use `FormSaverScope` when your form mostly contains ordinary uncontrolled native controls and you do not want to spread bind helpers into every input. This is the most jQuery-like API.
@@ -432,7 +431,7 @@ npm run demo:build
 npm run demo:preview
 ```
 
-The demo includes text inputs, textarea, checkbox, radio buttons, single select, multi-select, a manually wired number input, reset/clear/manual-save buttons, and a debug panel that shows both React state and the raw saved `localStorage` JSON.
+The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
 
 ## API draft
 
@@ -507,8 +506,6 @@ The hook includes convenience binders for common controlled fields:
 
 You can ignore these helpers and wire controls manually with `values`, `setValue`, and `setValues`.
 
-
-
 ### `useFormSaverDom(options)`
 
 ```ts
@@ -535,7 +532,7 @@ useFormSaverDom({
 `useFormSaverDom` returns:
 
 ```ts
-{
+const result = {
     ref,
     getValues,
     saveNow,
@@ -549,7 +546,6 @@ useFormSaverDom({
 ```
 
 By default, password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
-
 
 ### `FormSaverScope`
 

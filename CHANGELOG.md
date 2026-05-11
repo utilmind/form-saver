@@ -13,6 +13,7 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added `useFormSaver` with typed state helpers and form control binders.
 - Added the first DOM auto-binding phase with native control helpers and `useFormSaverDom` for uncontrolled forms/containers.
 - Added a Vite demo application under `react/demo/`.
+- Added three demo tabs covering controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`.
 - Added Vitest unit tests for storage helpers, JSON envelope validation, merge behavior, key removal, prefix cleanup, SSR-safe storage behavior, DOM control collection/restoration helpers, React hook behavior, bind helpers, and SSR render safety.
 - Added ESLint and Prettier configuration for the React module.
 - Added GitHub Actions CI for React module checks and Vite demo build.
@@ -25,6 +26,7 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Documented that the React storage format is independent from the legacy jQuery storage format.
 - Marked the React package as side-effect-free to improve production tree-shaking of unused exports.
 - Decided that dynamic DOM controls should use explicit `restoreNow()` in the MVP instead of a built-in `MutationObserver`.
+- Decided that the public brand is FormSaver, while the package keeps a lowercase npm-compatible name.
 
 ### Notes
 
