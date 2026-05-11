@@ -20,6 +20,8 @@ This project is currently in early React migration stage. The legacy jQuery plug
 - Added GitHub Actions CI for React module checks and Vite demo build.
 - Added `FormSaverScope` and DOM auto-binding documentation for lightweight uncontrolled native control usage.
 - Added jsdom-based React hook tests for `useFormSaver` and `useFormSaverDom`.
+- Added clearer documentation for controlled vs uncontrolled React controls.
+- Made `useFormSaver` `initialValues` optional for simple bind-only controlled forms.
 
 ### Changed
 

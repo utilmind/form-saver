@@ -53,7 +53,7 @@ export interface WriteStoredFormOptions<
 
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {
     storageKey: string
-    initialValues: TValues
+    initialValues?: TValues
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number

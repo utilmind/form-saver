@@ -62,6 +62,28 @@ const getSelect = (container: HTMLElement, name: string): HTMLSelectElement => {
     return select
 }
 
+const ControlledDemoWithoutInitialValues = () => {
+    const formSaver = useFormSaver<SettingsFormValues>({
+        storageKey: STORAGE_KEY,
+        debounceMs: 0
+    })
+
+    return (
+        <form>
+            <input {...formSaver.bind.text('title')} />
+            <textarea {...formSaver.bind.textarea('notes')} />
+            <input type="checkbox" {...formSaver.bind.checkbox('enabled')} />
+            <select {...formSaver.bind.multiSelect('tags')}>
+                <option value="a">A</option>
+                <option value="b">B</option>
+            </select>
+            <button type="button" onClick={() => formSaver.resetValues()}>
+                reset
+            </button>
+        </form>
+    )
+}
+
 const ControlledDemo = () => {
     const formSaver = useFormSaver<SettingsFormValues>({
         storageKey: STORAGE_KEY,
@@ -134,6 +156,35 @@ describe('useFormSaver', () => {
         expect(getSelect(container, 'tags').selectedOptions[0].value).toBe('a')
         expect(getTextarea(container, 'notes').value).toBe('Restored notes')
         expect(getByTestId('restored').textContent).toBe('yes')
+    })
+
+    it('can restore and reset bind-only controlled values without explicit initialValues', async () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Restored without defaults',
+            enabled: true,
+            mode: 'accurate',
+            tags: ['b'],
+            notes: 'Restored notes'
+        })
+
+        const { container, getByText } = render(<ControlledDemoWithoutInitialValues />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Restored without defaults')
+        })
+
+        expect(getInput(container, 'enabled').checked).toBe(true)
+        expect(getSelect(container, 'tags').selectedOptions[0].value).toBe('b')
+        expect(getTextarea(container, 'notes').value).toBe('Restored notes')
+
+        fireEvent.click(getByText('reset'))
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('')
+        })
+        expect(getInput(container, 'enabled').checked).toBe(false)
+        expect(getSelect(container, 'tags').selectedOptions.length).toBe(0)
+        expect(getTextarea(container, 'notes').value).toBe('')
     })
 
     it('saves values changed through bind helpers', async () => {

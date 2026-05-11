@@ -172,6 +172,38 @@ export function SettingsForm() {
 }
 ```
 
+
+## Controlled vs uncontrolled controls
+
+React can render form controls in two different styles. FormSaver supports both styles, but they need different APIs.
+
+A **controlled** control gets its current value from React state on every render:
+
+```tsx
+<input
+    name="email"
+    value={values.email}
+    onChange={(event) => setValues({ ...values, email: event.target.value })}
+/>
+```
+
+In this mode, React state is the source of truth. If any code writes directly to `input.value`, React may overwrite that DOM value on the next render. Use `useFormSaver` for this style, because it restores saved values into React state instead of writing directly to the DOM.
+
+An **uncontrolled** control lets the browser DOM keep the current value after the initial render:
+
+```tsx
+<input name="email" defaultValue="" />
+<textarea name="message" defaultValue="" />
+<input type="checkbox" name="newsletter" defaultChecked={false} />
+```
+
+In this mode, React provides only the initial value through `defaultValue` / `defaultChecked`. After that, the current value lives in the DOM, so `useFormSaverDom` and `FormSaverScope` can restore and save it automatically by scanning named native controls inside a form or container.
+
+Use this rule of thumb:
+
+- Use `useFormSaver` when fields use `value`, `checked`, React state, live validation, conditional UI, or custom UI-library components.
+- Use `useFormSaverDom` / `FormSaverScope` when fields are ordinary native `input`, `textarea`, or `select` elements with `name` attributes and no React-controlled `value` / `checked`.
+
 ## DOM auto-binding usage
 
 Use `FormSaverScope` when your form mostly contains ordinary uncontrolled native controls and you do not want to spread bind helpers into every input. This is the most jQuery-like API.
@@ -446,7 +478,7 @@ It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, sin
 ```ts
 useFormSaver<TValues>({
     storageKey,
-    initialValues,
+    initialValues, // optional
     storage: 'localStorage',
     enabled: true,
     debounceMs: 150,
@@ -467,7 +499,7 @@ useFormSaver<TValues>({
 | Option               | Default          | Description                                                                                                                                                                                                 |
 | -------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `storageKey`         | required         | Key used in browser storage.                                                                                                                                                                                |
-| `initialValues`      | required         | Initial controlled state for the form.                                                                                                                                                                      |
+| `initialValues`      | `{}`             | Optional initial controlled state for the form. Recommended when you read `values` directly or need non-empty defaults. Bind helpers can infer simple defaults when it is omitted.                         |
 | `storage`            | `'localStorage'` | Use `'localStorage'` or `'sessionStorage'`.                                                                                                                                                                 |
 | `enabled`            | `true`           | Disable restore/save behavior when set to `false`.                                                                                                                                                          |
 | `debounceMs`         | `150`            | Delay before saving after a state change. Use `0` to save immediately.                                                                                                                                      |
@@ -480,6 +512,9 @@ useFormSaver<TValues>({
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |
 | `onSave`             | `undefined`      | Called after values were saved.                                                                                                                                                                             |
 | `onError`            | `undefined`      | Called when restore/save transforms or callbacks throw. Storage access failures are ignored by the storage helpers.                                                                                         |
+
+
+When `initialValues` is omitted, `useFormSaver` learns field names from bind helpers during render and uses simple defaults: `''` for text-like fields, `false` for checkboxes, `[]` for multi-selects, and no selected radio value. This is convenient for simple bind-only forms. If you read `form.values` directly in your component logic, provide `initialValues` so every field has an explicit typed value from the first render.
 
 ### Return value
 
@@ -622,8 +657,7 @@ Saving Form B updates `common` and `onlyB`, but does not delete `onlyA` from sto
 
 ## Next.js notes
 
-The hook starts with `initialValues` during SSR and the first client render.
-Saved values are restored after client-side mount.
+The hook starts with `initialValues` during SSR and the first client render. If `initialValues` is omitted, it starts with an empty object and bind helpers expose safe control defaults such as empty strings, `false`, or empty arrays. Saved values are restored after client-side mount.
 
 This avoids reading `localStorage` or `sessionStorage` while rendering on the server.
 
