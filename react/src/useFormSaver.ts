@@ -126,18 +126,6 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     return result
 }
 
-// Returns explicit initial values or the stable empty object used when they are omitted.
-const resolveInitialValues = <TValues extends FormSaverValuesConstraint<TValues>>(
-    initialValues: TValues | undefined,
-    emptyInitialValues: TValues
-): TValues => {
-    if (initialValues === undefined) {
-        return emptyInitialValues
-    }
-
-    return initialValues
-}
-
 const buildResetValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     initialValues: TValues,
     registeredDefaults: Partial<TValues>
@@ -179,14 +167,12 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     } = options
 
     const emptyInitialValuesRef = useRef<TValues>({} as TValues)
-    const currentInitialValues = resolveInitialValues<TValues>(
-        initialValues,
-        emptyInitialValuesRef.current
-    )
-    const initialValuesRef = useRef<TValues>(currentInitialValues)
+    const initialValuesRef = useRef<TValues>(initialValues ?? emptyInitialValuesRef.current)
     const registeredDefaultsRef = useRef<Partial<TValues>>({})
     const skipNextSaveRef = useRef(!saveOnMount)
-    const [values, setValuesState] = useState<TValues>(currentInitialValues)
+    const [values, setValuesState] = useState<TValues>(
+        initialValues ?? emptyInitialValuesRef.current
+    )
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
@@ -198,10 +184,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
     // Keep the latest initial values available for reset without forcing rehydration.
     useEffect(() => {
-        initialValuesRef.current = resolveInitialValues<TValues>(
-            initialValues,
-            emptyInitialValuesRef.current
-        )
+        initialValuesRef.current = initialValues ?? emptyInitialValuesRef.current
     }, [initialValues])
 
     // Keep the skip flag in sync when the storage target changes.
