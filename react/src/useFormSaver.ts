@@ -130,13 +130,7 @@ const pickKnownValues = <TValues extends FormSaverValuesConstraint<TValues>>(
 const resolveInitialValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     initialValues: TValues | undefined,
     emptyInitialValues: TValues
-): TValues => {
-    if (initialValues === undefined) {
-        return emptyInitialValues
-    }
-
-    return initialValues
-}
+): TValues => initialValues ?? emptyInitialValues
 
 const buildResetValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     initialValues: TValues,
