@@ -20,4 +20,4 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Done. Use distrubution package from "..\_packs\".
+echo Done. Use distribution package from "..\_packs\".
