@@ -16,6 +16,12 @@ if errorlevel 1 (
 
 if not exist "..\_packs" mkdir "..\_packs"
 
+copy /y "..\LICENSE.txt" "LICENSE.txt" >nul
+if errorlevel 1 (
+    echo Failed to copy LICENSE.txt.
+    exit /b 1
+)
+
 call npm pack --pack-destination "..\_packs"
 if errorlevel 1 (
     echo npm pack failed.
