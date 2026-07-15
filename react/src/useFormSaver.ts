@@ -558,7 +558,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                 clearSaveTimer()
                 cancelFocusedAutosave()
                 pendingSaveRef.current = false
-                return persistValues(valuesRef.current, true, true)
+                // Persist the final focused value, but do not mutate the address bar during
+                // unload. Browsers may reload the pre-unload URL snapshot, which would cause a
+                // visible new-hash -> stale-hash -> restored-hash flicker.
+                return persistValues(valuesRef.current, true, false)
             },
             ownsField: (fieldName) =>
                 Object.prototype.hasOwnProperty.call(valuesRef.current, fieldName) ||

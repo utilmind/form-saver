@@ -132,6 +132,7 @@ describe('demo URL synchronization', () => {
         window.dispatchEvent(new Event('beforeunload'))
 
         expect(readStoredForm(storageKey)?.values.projectName).toBe('Typed before F5')
+        expect(window.location.hash).toBe(staleHash)
 
         firstRender.unmount()
         window.history.replaceState(null, '', `/?demo=scope-component${staleHash}`)

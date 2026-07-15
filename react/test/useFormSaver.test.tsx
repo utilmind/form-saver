@@ -440,6 +440,7 @@ describe('useFormSaver', () => {
         expect(readStoredForm<SettingsFormValues>(STORAGE_KEY)?.values.title).toBe(
             'Typed before F5'
         )
+        expect(window.location.hash).toBe(oldHash)
 
         firstRender.unmount()
         window.history.replaceState(null, '', `/${oldHash}`)

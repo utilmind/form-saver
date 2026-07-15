@@ -190,7 +190,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     )
 
     const saveCurrentRoot = useCallback(
-        (currentRoot: TRoot): StoredFormSaverData<FormSaverValues> | null => {
+        (currentRoot: TRoot, saveToUrlHash = true): StoredFormSaverData<FormSaverValues> | null => {
             if (!enabled || !storageKey) {
                 return null
             }
@@ -216,7 +216,9 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                     : null
                 const currentStored = newlySaved ?? storedBeforeSave
 
-                writeValuesToHash(values, newlySaved, valuesToSave)
+                if (saveToUrlHash) {
+                    writeValuesToHash(values, newlySaved, valuesToSave)
+                }
 
                 if (currentStored) {
                     isDirtyRef.current = false
@@ -500,7 +502,10 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
 
                 clearTimer(timerRef)
                 cancelFocusedAutosave()
-                return saveCurrentRoot(root)
+                // Keep the current address bar unchanged while unloading. The browser may
+                // reload an earlier URL snapshot even after replaceState, producing a visible
+                // hash rollback before FormSaver restores the latest stored value.
+                return saveCurrentRoot(root, false)
             },
             ownsField: (_fieldName, activeElement) => root.contains(activeElement)
         })

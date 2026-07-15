@@ -236,6 +236,7 @@ describe('useFormSaverDom', () => {
 
         window.dispatchEvent(new Event('beforeunload'))
         expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Typed DOM value before F5')
+        expect(window.location.hash).toBe(oldHash)
 
         firstRender.unmount()
         window.history.replaceState(null, '', `/${oldHash}`)
