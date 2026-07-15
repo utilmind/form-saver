@@ -41,17 +41,20 @@ const DomDemo = ({
     storageKey = STORAGE_KEY,
     saveEvent = 'change',
     debounceMs = 0,
+    urlHash = false,
     onSave
 }: {
     storageKey?: string
     saveEvent?: 'change' | 'input'
     debounceMs?: number
+    urlHash?: boolean
     onSave?: () => void
 }) => {
     const formSaver = useFormSaverDom<HTMLFormElement>({
         storageKey,
         saveEvent,
         debounceMs,
+        urlHash,
         onSave
     })
 
@@ -72,6 +75,12 @@ const DomDemo = ({
             <button type="button" onClick={() => formSaver.clearStoredValues()}>
                 clear
             </button>
+            <button type="button" onClick={() => formSaver.clearUrlHashValues()}>
+                clear hash
+            </button>
+            <button type="button" onClick={() => formSaver.restoreUrlHashFromStorage()}>
+                restore hash
+            </button>
             <output data-testid="restored">{formSaver.hasRestored ? 'yes' : 'no'}</output>
         </div>
     )
@@ -79,6 +88,7 @@ const DomDemo = ({
 
 beforeEach(() => {
     installTestBrowserStorage()
+    window.history.replaceState(null, '', '/')
 })
 
 afterEach(() => {
@@ -107,6 +117,44 @@ describe('useFormSaverDom', () => {
         expect(getTextarea(container, 'notes').value).toBe('Restored notes')
         expect(getInput(container, 'enabled').checked).toBe(true)
         expect(getByTestId('restored').textContent).toBe('yes')
+    })
+
+    it('automatically restores storage into the hash when URL synchronization is enabled', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Stored DOM title',
+            notes: 'Stored DOM notes',
+            enabled: true
+        })
+
+        const { container } = render(<DomDemo urlHash />)
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Stored DOM title'
+            )
+        })
+
+        expect(getInput(container, 'title').value).toBe('Stored DOM title')
+        expect(getInput(container, 'enabled').checked).toBe(true)
+    })
+
+    it('restores DOM values from the hash before browser storage', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Storage title',
+            notes: 'Storage notes',
+            enabled: false
+        })
+        window.history.replaceState(null, '', '/#title=Hash+title&notes=Hash+notes&enabled=true')
+
+        const { container } = render(<DomDemo urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Hash title')
+        })
+
+        expect(getTextarea(container, 'notes').value).toBe('Hash notes')
+        expect(getInput(container, 'enabled').checked).toBe(true)
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
     })
 
     it('saves native control values after a change event', async () => {

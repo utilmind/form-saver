@@ -10,13 +10,17 @@ All notable changes to this project will be documented in this file.
 - Added deterministic restore priority where a recognized URL hash overrides browser storage without mixing stale local values.
 - Added readable repeated hash parameters for array values and runtime type restoration based on `initialValues` or binder defaults.
 - Added `clearUrlHashValues()` and configurable `restore` / `historyMode` URL hash options.
-- Enabled URL hash synchronization in the `react/demo` controlled-bind example.
+- Added automatic `urlHash` support to `useFormSaverDom` and `FormSaverScope` with the same hash-first/storage-fallback behavior as controlled forms.
+- Added `restoreUrlHashFromStorage()` as both a hook helper and a standalone utility for route setups that keep form components mounted.
+- Enabled URL hash synchronization in all three `react/demo` form examples.
 - Added URL hash unit and hook integration tests.
 
 ### Changed
 
 - Reused one prepared value set for browser storage and URL hash persistence so `mapBeforeSave` runs only once per save.
-- Updated the React and repository documentation with URL hash usage and restore semantics.
+- Changed the demo navigation to use clean destination URLs and rely on FormSaver initialization, rather than demo-specific localStorage-to-hash serialization.
+- Preserved merged values from shared storage keys when multiple FormSaver scopes synchronize one hash.
+- Updated the React and repository documentation with URL hash usage, page-navigation behavior, and restore semantics.
 
 ## [2026-05-11]: Migration from jQuery to React
 

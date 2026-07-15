@@ -176,7 +176,7 @@ export function SettingsForm() {
 
 ## URL hash synchronization
 
-Set `urlHash: true` on `useFormSaver` to mirror the complete controlled value set after the `#` character:
+Set `urlHash: true` on `useFormSaver`, `useFormSaverDom`, or `FormSaverScope` to restore and mirror the form values after the `#` character. For a controlled form:
 
 ```tsx
 const form = useFormSaver<SettingsForm>({
@@ -210,9 +210,10 @@ Restore order is deterministic:
 1. If the hash contains at least one known form field, the hash is the restore source and browser storage is ignored for that restore.
 2. Fields omitted from the hash keep their `initialValues` or binder defaults.
 3. If no known form field is present in the hash, FormSaver falls back to `localStorage` or `sessionStorage`.
-4. After restoration, FormSaver normalizes the hash so it contains the complete current controlled state.
+4. When the page opens without a recognized form hash, FormSaver restores the form from browser storage and automatically rebuilds the complete hash.
+5. After restoration, FormSaver normalizes the hash so it contains the complete current state.
 
-This avoids mixing a shared URL with stale values from the current browser. The hash is treated as belonging to this controlled form, so enabling this option replaces the existing hash content.
+This avoids mixing a shared URL with stale values from the current browser. The hash is treated as belonging to the initialized FormSaver scope, so enabling this option replaces the existing hash content. The same restore order is used by controlled and DOM-based APIs.
 
 Use the object form for one-way mirroring or explicit browser-history behavior:
 
@@ -229,9 +230,26 @@ const form = useFormSaver<SettingsForm>({
 
 - `restore` defaults to `true`. Set it to `false` to write values to the hash without restoring from it.
 - `historyMode` defaults to `'replace'`, which avoids adding a browser-history entry for every saved change. Use `'push'` only when each synchronized state should become a separate history entry.
-- `clearUrlHashValues()` removes the synchronized hash without changing React state or browser storage.
+- `clearUrlHashValues()` removes the synchronized hash without changing form state or browser storage.
+- `restoreUrlHashFromStorage()` explicitly rebuilds the hash from the complete stored value set. Normally this is unnecessary because `urlHash: true` performs the same synchronization automatically when FormSaver initializes. It is useful when a router keeps the form component mounted while hiding and showing its route.
 
-Runtime type restoration uses `initialValues` and defaults registered by `bind.*`, because TypeScript types do not exist at runtime. Passing `initialValues` is recommended when URL synchronization includes numbers, booleans, or arrays.
+The same explicit operation is also exported as a standalone helper:
+
+```ts
+restoreUrlHashFromStorage<SettingsForm>('settings-form')
+```
+
+Runtime type restoration for controlled forms uses `initialValues` and defaults registered by `bind.*`, because TypeScript types do not exist at runtime. DOM mode infers the runtime value template from the native controls currently present in its scope. Passing `initialValues` is recommended when controlled URL synchronization includes numbers, booleans, or arrays.
+
+### Navigation between pages
+
+Query parameters and hash fragments are not global browser state; they are parts of the current URL. A normal destination such as `/about/` contains neither, so a regular link or `history.pushState(null, '', '/about/')` removes both without a special FormSaver cleanup call.
+
+```tsx
+<Link to="/about/">About</Link>
+```
+
+Be careful when constructing SPA destinations by cloning `window.location.href`: changing only `pathname` preserves the old `search` and `hash`. Either navigate with the router's clean destination string or explicitly clear the inherited URL parts. When the user returns to the form route without a hash, a newly initialized FormSaver with `urlHash: true` restores storage and recreates the hash automatically.
 
 ## Controlled vs uncontrolled controls
 
@@ -529,9 +547,9 @@ The demo is organized into three tabs: controlled bind helpers, direct `useFormS
 - `http://localhost:5173/?demo=dom-hook`
 - `http://localhost:5173/?demo=scope-component`
 
-Switching tabs first flushes pending changes from the current form and then updates the query parameter and hash together. The target hash is built from that tab's saved values, or from its shared defaults when it has not been saved yet. DOM-hook and scope saves also refresh the hash while their tab remains active. This routing behavior belongs only to the demo application; it does not change the FormSaver APIs.
+Switching tabs first flushes pending changes from the current form and navigates to a clean URL for the selected tab. The newly mounted FormSaver instance then restores that tab from storage and rebuilds its hash through `urlHash: true`; the demo application does not serialize or restore form hashes itself.
 
-The controlled-bind tab additionally enables `urlHash: true`, so opening a link with controlled values in the hash restores them into React state. It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
+The footer also demonstrates page navigation between `/` and `/about/`. The About destination naturally removes the demo query and hash because they are absent from its URL. Returning to `/` mounts the selected form again, and FormSaver automatically restores both its values and hash. All three tabs enable the same library-level URL synchronization: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`.
 
 ## API draft
 
@@ -607,6 +625,7 @@ Use `getString(name)` for text-like fields, `getBoolean(name)` for checkbox-like
   resetValues,
   clearStoredValues,
   clearUrlHashValues,
+  restoreUrlHashFromStorage,
   saveNow,
   getValue,
   getString,
@@ -655,6 +674,7 @@ useFormSaverDom({
     debounceMs: 150,
     saveEvent: 'change',
     restoreOnMount: true,
+    urlHash: false,
     version,
     mergeUnknownKeys: true,
     includePasswords: false,
@@ -678,11 +698,15 @@ const result = {
     restoreNow,
     resetValues,
     clearStoredValues,
+    clearUrlHashValues,
+    restoreUrlHashFromStorage,
     hasRestored,
     restoredAt,
     lastSavedAt
 }
 ```
+
+`urlHash` has the same `true` and object forms as the controlled hook. With `urlHash: true`, DOM controls restore from a recognized hash first, otherwise from browser storage, and the full hash is recreated automatically after mount.
 
 By default, password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
 
@@ -691,7 +715,7 @@ By default, password fields, hidden inputs, file/image/button/reset/submit input
 `FormSaverScope` is a lightweight wrapper around `useFormSaverDom`.
 
 ```tsx
-<FormSaverScope asChild storageKey="settings">
+<FormSaverScope asChild storageKey="settings" urlHash>
     <form>
         <input name="query" defaultValue="" />
     </form>

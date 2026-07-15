@@ -27,6 +27,7 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
         debounceMs: 150,
         saveEvent: 'input',
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
         onSave: handleFormSaved,
         onError: (error: unknown): void => {
@@ -39,6 +40,7 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
         initialValues: initialCustomAddon,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
         onSave: handleFormSaved,
         onError: (error: unknown): void => {
@@ -64,6 +66,7 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
 
     const handleClearStorage = useCallback((): void => {
         domForm.clearStoredValues()
+        domForm.clearUrlHashValues()
         refreshSavedJson()
     }, [domForm, refreshSavedJson])
 
@@ -94,7 +97,7 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
                             className="danger-button"
                             onClick={handleClearStorage}
                         >
-                            Clear storage
+                            Clear storage and hash
                         </button>
                     </div>
                 </form>

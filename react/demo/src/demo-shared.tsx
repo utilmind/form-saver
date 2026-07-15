@@ -1,7 +1,5 @@
-import type { FormSaverValues, FormSaverValuesConstraint, useFormSaver } from 'form-saver-react'
+import type { FormSaverValuesConstraint, useFormSaver } from 'form-saver-react'
 import { useCallback, useEffect, useState } from 'react'
-
-import { writeFormValuesToUrlHash } from '../../src/urlHash'
 
 export type DemoTab = 'controlled-bind' | 'dom-hook' | 'scope-component'
 export type DemoMode = 'basic' | 'advanced' | 'expert'
@@ -66,12 +64,6 @@ export const initialCustomAddon: CustomAddonSettings = {
     customReviewLevel: 'quick'
 }
 
-export const INITIAL_VALUES_BY_TAB: Record<DemoTab, FormSaverValues> = {
-    'controlled-bind': { ...initialSettings },
-    'dom-hook': { ...initialNativeSettings, ...initialCustomAddon },
-    'scope-component': { ...initialNativeSettings, ...initialCustomAddon }
-}
-
 const readSavedJson = (storageKey: string): string => {
     if (typeof window === 'undefined') {
         return 'Browser storage is not available during server rendering.'
@@ -106,13 +98,9 @@ export const useStorageDebug = <TValues extends FormSaverValuesConstraint<TValue
         setSavedJson(readSavedJson(storageKey))
     }, [storageKey])
 
-    const handleFormSaved = useCallback(
-        (values: Partial<TValues>): void => {
-            refreshSavedJson()
-            writeFormValuesToUrlHash<TValues>(values)
-        },
-        [refreshSavedJson]
-    )
+    const handleFormSaved = useCallback((): void => {
+        refreshSavedJson()
+    }, [refreshSavedJson])
 
     useEffect(() => {
         refreshSavedJson()

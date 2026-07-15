@@ -1,7 +1,4 @@
-import { type FormSaverValues, readStoredForm } from 'form-saver-react'
-
-import { serializeFormValuesToUrlHash } from '../../src/urlHash'
-import { type DemoTab, INITIAL_VALUES_BY_TAB, STORAGE_KEYS } from './demo-shared'
+import { type DemoTab } from './demo-shared'
 
 const DEMO_QUERY_PARAM = 'demo'
 const ABOUT_PATHNAME = '/about/'
@@ -16,29 +13,17 @@ const isDemoTab = (value: string | null): value is DemoTab =>
 const normalizePathname = (pathname: string): string =>
     pathname.length > 1 ? pathname.replace(/\/+$/, '') : pathname
 
-const readDemoValues = (tab: DemoTab): FormSaverValues =>
-    readStoredForm<FormSaverValues>(STORAGE_KEYS[tab])?.values ?? INITIAL_VALUES_BY_TAB[tab]
-
 const createDemoUrl = (tab: DemoTab, currentUrl: string): URL => {
-    const url = new URL(currentUrl)
+    // Resolving a new pathname creates a clean destination URL without
+    // inheriting the current page's query string or hash fragment.
+    const url = new URL(DEMO_PATHNAME, currentUrl)
 
-    url.pathname = DEMO_PATHNAME
-    url.search = ''
     url.searchParams.set(DEMO_QUERY_PARAM, tab)
-    url.hash = serializeFormValuesToUrlHash<FormSaverValues>(readDemoValues(tab))
 
     return url
 }
 
-const createAboutUrl = (currentUrl: string): URL => {
-    const url = new URL(currentUrl)
-
-    url.pathname = ABOUT_PATHNAME
-    url.search = ''
-    url.hash = ''
-
-    return url
-}
+const createAboutUrl = (currentUrl: string): URL => new URL(ABOUT_PATHNAME, currentUrl)
 
 export const readDemoPageFromLocation = (): DemoPage => {
     if (typeof window === 'undefined') {
@@ -74,16 +59,4 @@ export const writeAboutPageToLocation = (): void => {
     }
 
     window.history.pushState(null, '', createAboutUrl(window.location.href))
-}
-
-export const ensureDemoTabHash = (tab: DemoTab): void => {
-    if (
-        typeof window === 'undefined' ||
-        readDemoPageFromLocation() !== 'demo' ||
-        window.location.hash
-    ) {
-        return
-    }
-
-    window.history.replaceState(null, '', createDemoUrl(tab, window.location.href))
 }

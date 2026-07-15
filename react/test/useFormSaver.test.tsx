@@ -130,6 +130,12 @@ const ControlledDemo = ({ urlHash = false }: ControlledDemoProps) => {
             <button type="button" onClick={() => formSaver.saveNow()}>
                 save
             </button>
+            <button type="button" onClick={() => formSaver.clearUrlHashValues()}>
+                clear hash
+            </button>
+            <button type="button" onClick={() => formSaver.restoreUrlHashFromStorage()}>
+                restore hash
+            </button>
             <output data-testid="restored">{formSaver.hasRestored ? 'yes' : 'no'}</output>
         </form>
     )
@@ -293,6 +299,25 @@ describe('useFormSaver', () => {
             expect(params.get('title')).toBe('Changed for link')
             expect(params.getAll('tags')).toEqual(['a', 'b'])
         })
+    })
+
+    it('can explicitly restore the URL hash from storage', () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Stored for hash',
+            enabled: true,
+            mode: 'accurate',
+            tags: ['b'],
+            notes: 'Stored notes'
+        })
+
+        const { getByText } = render(<ControlledDemo />)
+
+        fireEvent.click(getByText('restore hash'))
+
+        const params = new URLSearchParams(window.location.hash.slice(1))
+        expect(params.get('title')).toBe('Stored for hash')
+        expect(params.get('enabled')).toBe('true')
+        expect(params.getAll('tags')).toEqual(['b'])
     })
 
     it('clears storage without changing controlled values', async () => {

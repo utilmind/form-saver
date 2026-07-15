@@ -57,6 +57,10 @@ export interface FormSaverUrlHashOptions {
     historyMode?: FormSaverUrlHashHistoryMode
 }
 
+export interface RestoreUrlHashFromStorageOptions extends ReadStoredFormOptions {
+    historyMode?: FormSaverUrlHashHistoryMode
+}
+
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {
     storageKey: string
     initialValues?: TValues
@@ -85,6 +89,7 @@ export interface UseFormSaverDomOptions {
     debounceMs?: number
     saveEvent?: FormSaverDomSaveEvent
     restoreOnMount?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     version?: string | number
     mergeUnknownKeys?: boolean
     includePasswords?: boolean
@@ -107,6 +112,8 @@ export interface UseFormSaverDomResult<TRoot extends HTMLElement = HTMLElement> 
     restoreNow: () => StoredFormSaverData<FormSaverValues> | null
     resetValues: () => StoredFormSaverData<FormSaverValues> | null
     clearStoredValues: () => void
+    clearUrlHashValues: () => void
+    restoreUrlHashFromStorage: () => StoredFormSaverData<FormSaverValues> | null
     hasRestored: boolean
     restoredAt?: number
     lastSavedAt?: number
@@ -173,6 +180,7 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     resetValues: (nextValues?: TValues) => void
     clearStoredValues: () => void
     clearUrlHashValues: () => void
+    restoreUrlHashFromStorage: () => StoredFormSaverData<TValues> | null
     saveNow: () => void
     getValue: <K extends FormSaverFieldName<TValues>>(
         name: K,

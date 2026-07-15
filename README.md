@@ -109,7 +109,7 @@ npm run demo:dev
 
 The old jQuery plugin remains under `jquery/`.
 
-It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization. The React package now also supports URL hash synchronization through `useFormSaver({ urlHash: true })`.
+It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization. The React package supports automatic URL hash synchronization through `urlHash: true` in `useFormSaver`, `useFormSaverDom`, and `FormSaverScope`.
 
 See [`jquery/README.md`](./jquery/README.md) for legacy usage.
 

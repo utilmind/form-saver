@@ -35,6 +35,7 @@ export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
         initialValues: initialCustomAddon,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
         onSave: handleFormSaved,
         onError: (error: unknown): void => {
@@ -77,6 +78,7 @@ export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
     const handleClearStorage = useCallback((): void => {
         removeStoredForm(storageKey)
         customForm.clearStoredValues()
+        customForm.clearUrlHashValues()
         refreshSavedJson()
     }, [customForm, refreshSavedJson, storageKey])
 
@@ -95,6 +97,7 @@ export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
                     asChild
                     storageKey={storageKey}
                     mergeUnknownKeys
+                    urlHash
                     onRestore={refreshSavedJson}
                     onSave={handleFormSaved}
                     onError={(error: unknown): void => {
@@ -117,7 +120,7 @@ export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
                                 className="danger-button"
                                 onClick={handleClearStorage}
                             >
-                                Clear storage
+                                Clear storage and hash
                             </button>
                         </div>
                     </form>

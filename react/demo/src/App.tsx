@@ -17,7 +17,6 @@ import { AppLink } from './app-link'
 import {
     DEFAULT_DEMO_TAB,
     type DemoPage,
-    ensureDemoTabHash,
     readDemoPageFromLocation,
     readDemoTabFromLocation,
     writeAboutPageToLocation,
@@ -107,7 +106,12 @@ const AboutContent = ({ onViewDemo }: AboutContentProps) => (
                 <strong>FormSaver</strong>, React hook package
                 <br />
                 (c) 2008-2026,{' '}
-                <a href="https://github.com/utilmind/form-saver/" className="outlink" target="_blank" rel="noreferrer">
+                <a
+                    href="https://github.com/utilmind/form-saver/"
+                    className="outlink"
+                    target="_blank"
+                    rel="noreferrer"
+                >
                     utilmind
                 </a>
             </p>
@@ -125,12 +129,6 @@ export const App = () => {
     const [page, setPage] = useState<DemoPage>(() => readDemoPageFromLocation())
     const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
     const saveActiveTabRef = useRef<(() => void) | null>(null)
-
-    useEffect(() => {
-        if (page === 'demo') {
-            ensureDemoTabHash(activeTab)
-        }
-    }, [activeTab, page])
 
     useEffect(() => {
         const handlePopState = (): void => {

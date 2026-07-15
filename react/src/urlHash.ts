@@ -11,11 +11,14 @@
  *   TypeScript generic types do not exist in the browser at runtime.
  */
 
+import { readStoredForm } from './storage'
 import type {
     FormSaverPrimitive,
     FormSaverUrlHashHistoryMode,
     FormSaverValue,
-    FormSaverValuesConstraint
+    FormSaverValuesConstraint,
+    RestoreUrlHashFromStorageOptions,
+    StoredFormSaverData
 } from './types'
 
 const getHashSearchParams = (hash: string): URLSearchParams =>
@@ -206,3 +209,16 @@ export const writeFormValuesToUrlHash = <TValues extends FormSaverValuesConstrai
 export const clearFormValuesFromUrlHash = (
     historyMode: FormSaverUrlHashHistoryMode = 'replace'
 ): boolean => updateBrowserHash('', historyMode)
+
+export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstraint<TValues>>(
+    storageKey: string,
+    options: RestoreUrlHashFromStorageOptions = {}
+): StoredFormSaverData<TValues> | null => {
+    const stored = readStoredForm<TValues>(storageKey, { storage: options.storage })
+
+    if (!stored) {
+        return null
+    }
+
+    return writeFormValuesToUrlHash<TValues>(stored.values, options.historyMode) ? stored : null
+}

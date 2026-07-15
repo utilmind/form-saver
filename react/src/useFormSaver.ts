@@ -16,6 +16,7 @@
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+    mergeFormValues,
     prepareFormValuesForSave,
     readStoredForm,
     removeStoredForm,
@@ -34,6 +35,7 @@ import type {
 import {
     clearFormValuesFromUrlHash,
     readFormValuesFromUrlHash,
+    restoreUrlHashFromStorage as restoreStoredUrlHash,
     writeFormValuesToUrlHash
 } from './urlHash'
 
@@ -295,19 +297,24 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     mapBeforeSaveRef.current
                 )
 
+                const saved = saveToStorage
+                    ? writeStoredForm<TValues>(storageKey, valuesToSave, {
+                          storage,
+                          version,
+                          mergeUnknownKeys
+                      })
+                    : null
+
                 if (saveToUrlHash && urlHashEnabled) {
-                    writeFormValuesToUrlHash<TValues>(valuesToSave, urlHashHistoryMode)
-                }
+                    const storedValues = mergeUnknownKeys
+                        ? (readStoredForm<TValues>(storageKey, { storage })?.values ?? {})
+                        : {}
+                    const hashValues =
+                        saved?.values ??
+                        mergeFormValues<TValues>(storedValues, valuesToSave, mergeUnknownKeys)
 
-                if (!saveToStorage) {
-                    return
+                    writeFormValuesToUrlHash<TValues>(hashValues, urlHashHistoryMode)
                 }
-
-                const saved = writeStoredForm<TValues>(storageKey, valuesToSave, {
-                    storage,
-                    version,
-                    mergeUnknownKeys
-                })
 
                 if (saved) {
                     setLastSavedAt(saved.meta.savedAt)
@@ -403,6 +410,13 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const clearUrlHashValues = useCallback((): void => {
         clearFormValuesFromUrlHash(urlHashHistoryMode)
     }, [urlHashHistoryMode])
+
+    const restoreUrlHashFromStorage = useCallback(() => {
+        return restoreStoredUrlHash<TValues>(storageKey, {
+            storage,
+            historyMode: urlHashHistoryMode
+        })
+    }, [storage, storageKey, urlHashHistoryMode])
 
     const saveNow = useCallback((): void => {
         persistValues(values, true, true)
@@ -540,6 +554,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             clearUrlHashValues,
+            restoreUrlHashFromStorage,
             saveNow,
             getValue,
             getString,
@@ -558,6 +573,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             resetValues,
             clearStoredValues,
             clearUrlHashValues,
+            restoreUrlHashFromStorage,
             saveNow,
             getValue,
             getString,

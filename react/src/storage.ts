@@ -64,7 +64,7 @@ const normalizeStoredData = <TValues extends FormSaverValuesConstraint<TValues>>
 
 // Merges current form values into existing storage while preserving unknown keys by default.
 // Using a manual loop instead of (...) spread to minimize allocations.
-const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
+export const mergeFormValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     existingValues: Partial<TValues>,
     nextValues: Partial<TValues>,
     mergeUnknownKeys: boolean
@@ -134,7 +134,7 @@ export const writeStoredForm = <TValues extends FormSaverValuesConstraint<TValue
         }
 
         const data: StoredFormSaverData<TValues> = {
-            values: mergeValueObjects<TValues>(
+            values: mergeFormValues<TValues>(
                 existing ? existing.values : {},
                 valuesToSave,
                 options.mergeUnknownKeys !== false

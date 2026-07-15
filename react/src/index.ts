@@ -27,6 +27,8 @@ export {
     writeStoredForm
 } from './storage'
 //
+export { restoreUrlHashFromStorage } from './urlHash'
+//
 export type {
     BrowserStorageName,
     FormSaverDomSaveEvent,
@@ -39,6 +41,7 @@ export type {
     FormSaverValues,
     FormSaverValuesConstraint,
     ReadStoredFormOptions,
+    RestoreUrlHashFromStorageOptions,
     StoredFormSaverData,
     UseFormSaverBinders,
     UseFormSaverDomOptions,
