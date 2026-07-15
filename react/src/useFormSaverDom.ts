@@ -15,6 +15,7 @@ import {
     DEFAULT_FORM_SAVER_SAVE_EVENT
 } from './defaults'
 import {
+    collectDomFormDefaultValues,
     collectDomFormValues,
     type DomControlOptions,
     resetDomFormValues,
@@ -22,6 +23,7 @@ import {
 } from './domControls'
 import { useFocusedControlAutosave } from './focusedControlAutosave'
 import { subscribeToPageUnload } from './pageUnload'
+import { useBrowserLayoutEffect } from './reactEffects'
 import {
     mergeFormValues,
     prepareFormValuesForSave,
@@ -38,8 +40,10 @@ import type {
 } from './types'
 import {
     clearFormValuesFromUrlHash,
+    getRegisteredUrlHashDefaultValues,
     resolveFormRestoreSource,
     restoreUrlHashFromStorage as restoreStoredUrlHash,
+    subscribeToUrlHashDefaultValues,
     writeFormValuesToUrlHash
 } from './urlHash'
 import { areFormSaverValueMapsEqual, haveFormSaverValuesChanged } from './valueEquality'
@@ -116,6 +120,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         typeof urlHash === 'object' ? (urlHash.historyMode ?? 'replace') : 'replace'
 
     const [root, setRoot] = useState<TRoot | null>(null)
+    const rootRef = useRef<TRoot | null>(null)
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
@@ -147,8 +152,21 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     )
 
     const ref = useCallback((node: TRoot | null): void => {
+        rootRef.current = node
         setRoot(node)
     }, [])
+
+    useBrowserLayoutEffect(() => {
+        if (!storageKey) {
+            return
+        }
+
+        return subscribeToUrlHashDefaultValues(storageKey, storage, () => {
+            const currentRoot = rootRef.current
+
+            return currentRoot ? collectDomFormDefaultValues(currentRoot, controlOptions) : {}
+        })
+    }, [controlOptions, storage, storageKey])
 
     const writeValuesToHash = useCallback(
         (
@@ -160,24 +178,30 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                 return
             }
 
+            let hashValues: Partial<FormSaverValues>
+
             if (saved) {
-                writeFormValuesToUrlHash<FormSaverValues>(saved.values, urlHashHistoryMode)
-                return
+                hashValues = saved.values
+            } else {
+                const valuesToSave =
+                    preparedValues ??
+                    prepareFormValuesForSave<FormSaverValues>(values, mapBeforeSaveRef.current)
+                const storedValues = mergeUnknownKeys
+                    ? (readStoredForm<FormSaverValues>(storageKey, { storage })?.values ?? {})
+                    : {}
+
+                hashValues = mergeFormValues<FormSaverValues>(
+                    storedValues,
+                    valuesToSave,
+                    mergeUnknownKeys
+                )
             }
 
-            const valuesToSave =
-                preparedValues ??
-                prepareFormValuesForSave<FormSaverValues>(values, mapBeforeSaveRef.current)
-            const storedValues = mergeUnknownKeys
-                ? (readStoredForm<FormSaverValues>(storageKey, { storage })?.values ?? {})
-                : {}
-            const hashValues = mergeFormValues<FormSaverValues>(
-                storedValues,
-                valuesToSave,
-                mergeUnknownKeys
+            writeFormValuesToUrlHash<FormSaverValues>(
+                hashValues,
+                urlHashHistoryMode,
+                getRegisteredUrlHashDefaultValues<FormSaverValues>(storageKey, storage)
             )
-
-            writeFormValuesToUrlHash<FormSaverValues>(hashValues, urlHashHistoryMode)
         },
         [
             mapBeforeSaveRef,
@@ -258,7 +282,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             }
 
             try {
-                const initialValues = collectDomFormValues(currentRoot, controlOptions)
+                const initialValues = collectDomFormDefaultValues(currentRoot, controlOptions)
                 const restoreSource =
                     urlHashEnabled && restoreFromUrlHash && typeof window !== 'undefined'
                         ? resolveFormRestoreSource<FormSaverValues>(

@@ -17,6 +17,7 @@ export type { FormSaverScopeProps } from './FormSaverScope'
 export { FormSaverScope } from './FormSaverScope'
 //
 export {
+    collectDomFormDefaultValues,
     collectDomFormValues,
     getDomFormControls,
     resetDomFormValues,

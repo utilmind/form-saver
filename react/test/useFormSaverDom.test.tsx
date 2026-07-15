@@ -43,7 +43,8 @@ const DomDemo = ({
     debounceMs = 0,
     urlHash = false,
     onSave,
-    autosaveIntervalSeconds
+    autosaveIntervalSeconds,
+    defaultEnabled = false
 }: {
     storageKey?: string
     saveEvent?: 'change' | 'input'
@@ -51,6 +52,7 @@ const DomDemo = ({
     urlHash?: boolean
     onSave?: () => void
     autosaveIntervalSeconds?: number
+    defaultEnabled?: boolean
 }) => {
     const formSaver = useFormSaverDom<HTMLFormElement>({
         storageKey,
@@ -66,7 +68,7 @@ const DomDemo = ({
             <form ref={formSaver.ref}>
                 <input name="title" defaultValue="Default title" />
                 <textarea name="notes" defaultValue="Default notes" />
-                <input name="enabled" type="checkbox" defaultChecked={false} />
+                <input name="enabled" type="checkbox" defaultChecked={defaultEnabled} />
             </form>
 
             <button type="button" onClick={() => formSaver.saveNow()}>
@@ -142,13 +144,39 @@ describe('useFormSaverDom', () => {
         expect(getInput(container, 'enabled').checked).toBe(true)
     })
 
+    it('uses native defaultChecked to omit default checkbox state and encode deviations', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: '',
+            notes: '',
+            enabled: true
+        })
+
+        const { container } = render(<DomDemo defaultEnabled urlHash />)
+        const enabled = getInput(container, 'enabled')
+
+        await waitFor(() => {
+            expect(enabled.checked).toBe(true)
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('enabled')).toBe('0')
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+    })
+
     it('restores DOM values from the hash before browser storage', async () => {
         writeStoredForm(STORAGE_KEY, {
             title: 'Storage title',
             notes: 'Storage notes',
             enabled: false
         })
-        window.history.replaceState(null, '', '/#title=Hash+title&notes=Hash+notes&enabled=true')
+        window.history.replaceState(null, '', '/#title=Hash+title&notes=Hash+notes&enabled=1')
 
         const { container } = render(<DomDemo urlHash />)
 
@@ -220,7 +248,7 @@ describe('useFormSaverDom', () => {
             notes: 'Old DOM notes',
             enabled: false
         })
-        const oldHash = '#title=Old+DOM+title&notes=Old+DOM+notes&enabled=false'
+        const oldHash = '#title=Old+DOM+title&notes=Old+DOM+notes'
         window.history.replaceState(null, '', `/${oldHash}`)
 
         const firstRender = render(<DomDemo debounceMs={5000} urlHash />)

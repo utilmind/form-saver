@@ -3,7 +3,7 @@
  *
  * Values are serialized as URLSearchParams after the # character. Primitive
  * values use one name=value pair, while arrays use repeated parameters. Empty
- * arrays are represented by one empty parameter so the field remains visible.
+ * values are omitted, and boolean checkbox state is encoded as compact 1/0.
  *
  * Developer notes:
  * - Keep this module free of React dependencies so it stays easy to test.
@@ -18,16 +18,76 @@ import type {
     FormSaverPrimitive,
     FormSaverUrlHashHistoryMode,
     FormSaverValue,
+    FormSaverValues,
     FormSaverValuesConstraint,
     RestoreUrlHashFromStorageOptions,
     StoredFormSaverData
 } from './types'
 
+type UrlHashDefaultValuesProvider = () => Partial<FormSaverValues>
+
+type UrlHashDefaultValuesSubscription = {
+    provider: UrlHashDefaultValuesProvider
+    storage: BrowserStorageName
+    storageKey: string
+}
+
+const urlHashDefaultValuesSubscriptions = new Map<number, UrlHashDefaultValuesSubscription>()
+let nextUrlHashDefaultValuesSubscriptionId = 1
+
+export const subscribeToUrlHashDefaultValues = (
+    storageKey: string,
+    storage: BrowserStorageName,
+    provider: UrlHashDefaultValuesProvider
+): (() => void) => {
+    const id = nextUrlHashDefaultValuesSubscriptionId++
+
+    urlHashDefaultValuesSubscriptions.set(id, {
+        provider,
+        storage,
+        storageKey
+    })
+
+    return () => {
+        urlHashDefaultValuesSubscriptions.delete(id)
+    }
+}
+
+export const getRegisteredUrlHashDefaultValues = <
+    TValues extends FormSaverValuesConstraint<TValues>
+>(
+    storageKey: string,
+    storage: BrowserStorageName
+): Partial<TValues> => {
+    const defaultValues: Partial<TValues> = {}
+
+    urlHashDefaultValuesSubscriptions.forEach((subscription) => {
+        if (subscription.storageKey !== storageKey || subscription.storage !== storage) {
+            return
+        }
+
+        try {
+            Object.assign(defaultValues, subscription.provider())
+        } catch {
+            // A detached or custom scope must not prevent another saver from updating the hash.
+        }
+    })
+
+    return defaultValues
+}
+
 const getHashSearchParams = (hash: string): URLSearchParams =>
     new URLSearchParams(hash.charAt(0) === '#' ? hash.slice(1) : hash)
 
-const serializePrimitive = (value: FormSaverPrimitive): string =>
-    value === null ? 'null' : String(value)
+const serializePrimitive = (value: FormSaverPrimitive): string => {
+    if (typeof value === 'boolean') {
+        return value ? '1' : '0'
+    }
+
+    return value === null ? 'null' : String(value)
+}
+
+const isEmptyHashPrimitive = (value: FormSaverPrimitive): boolean => value === '' || value === null
 
 const parsePrimitiveByTemplate = (
     value: string,
@@ -91,6 +151,20 @@ const parseValueByTemplate = (
 const parseUnknownValue = (values: string[]): FormSaverValue =>
     values.length > 1 ? values : (values[0] ?? '')
 
+const getOmittedHashValue = (
+    templateValue: FormSaverValue | undefined
+): FormSaverValue | undefined => {
+    if (Array.isArray(templateValue)) {
+        return []
+    }
+
+    if (typeof templateValue === 'string') {
+        return ''
+    }
+
+    return templateValue
+}
+
 export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     hash: string,
     templateValues: TValues,
@@ -133,7 +207,22 @@ export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstra
         })
     }
 
-    return hasOwnedValue ? values : null
+    if (!hasOwnedValue) {
+        return null
+    }
+
+    for (const key in templateValues) {
+        if (params.has(key)) {
+            continue
+        }
+
+        const omittedValue = getOmittedHashValue(templateValues[key])
+        if (omittedValue !== undefined) {
+            values[key] = omittedValue as TValues[typeof key]
+        }
+    }
+
+    return values
 }
 
 export type FormRestoreSource<TValues extends FormSaverValuesConstraint<TValues>> = {
@@ -194,7 +283,8 @@ export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstrai
 }
 
 export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
-    values: Partial<TValues>
+    values: Partial<TValues>,
+    defaultValues: Partial<TValues> = {}
 ): string => {
     const params = new URLSearchParams()
 
@@ -206,14 +296,26 @@ export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesCons
         }
 
         if (Array.isArray(value)) {
-            if (!value.length) {
-                params.append(key, '')
-                continue
-            }
-
             for (let index = 0; index < value.length; ++index) {
-                params.append(key, serializePrimitive(value[index]))
+                const item = value[index]
+
+                if (!isEmptyHashPrimitive(item)) {
+                    params.append(key, serializePrimitive(item))
+                }
             }
+            continue
+        }
+
+        if (isEmptyHashPrimitive(value)) {
+            continue
+        }
+
+        const defaultValue = defaultValues[key]
+        if (
+            typeof value === 'boolean' &&
+            typeof defaultValue === 'boolean' &&
+            value === defaultValue
+        ) {
             continue
         }
 
@@ -248,8 +350,9 @@ const updateBrowserHash = (nextHash: string, historyMode: FormSaverUrlHashHistor
 
 export const writeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
-    historyMode: FormSaverUrlHashHistoryMode = 'replace'
-): boolean => updateBrowserHash(serializeFormValuesToUrlHash(values), historyMode)
+    historyMode: FormSaverUrlHashHistoryMode = 'replace',
+    defaultValues: Partial<TValues> = {}
+): boolean => updateBrowserHash(serializeFormValuesToUrlHash(values, defaultValues), historyMode)
 
 export const clearFormValuesFromUrlHash = (
     historyMode: FormSaverUrlHashHistoryMode = 'replace'
@@ -257,12 +360,18 @@ export const clearFormValuesFromUrlHash = (
 
 export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstraint<TValues>>(
     storageKey: string,
-    options: RestoreUrlHashFromStorageOptions = {}
+    options: RestoreUrlHashFromStorageOptions<TValues> = {}
 ): StoredFormSaverData<TValues> | null => {
-    const stored = readStoredForm<TValues>(storageKey, { storage: options.storage })
+    const storage = options.storage ?? 'localStorage'
+    const stored = readStoredForm<TValues>(storageKey, { storage })
     if (!stored) {
         return null
     }
 
-    return writeFormValuesToUrlHash<TValues>(stored.values, options.historyMode) ? stored : null
+    const registeredDefaults = getRegisteredUrlHashDefaultValues<TValues>(storageKey, storage)
+    const defaultValues = Object.assign(registeredDefaults, options.defaultValues)
+
+    return writeFormValuesToUrlHash<TValues>(stored.values, options.historyMode, defaultValues)
+        ? stored
+        : null
 }

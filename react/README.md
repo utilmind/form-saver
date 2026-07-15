@@ -204,19 +204,19 @@ A state such as:
 is represented as readable hash parameters:
 
 ```text
-#query=precision+machining&enabled=true&mode=advanced&tags=lathe&tags=mill
+#query=precision+machining&enabled=1&mode=advanced&tags=lathe&tags=mill
 ```
 
-Primitive values use one `name=value` pair. Arrays use repeated parameters, and an empty array is retained as `tags=` so the field does not disappear from the URL.
+Primitive values use one `name=value` pair and arrays use repeated parameters. Empty strings, `null`, empty arrays, and empty array items are omitted from the hash. Boolean checkbox values use compact `1` / `0`; a checkbox is omitted when its current state matches its default. Controlled forms take that default from `initialValues` or the binder default, while DOM forms use the native `defaultChecked` state (the original `checked` attribute). Browser storage still keeps the complete values.
 
 Restore order is deterministic:
 
 1. If the hash contains at least one known form field, the hash is normally the restore source and browser storage is ignored for that restore.
 2. The reload exception is a focused field that was synchronously flushed during `beforeunload` while the browser kept the previous hash for F5/reload. If only that field differs, FormSaver uses the newer stored state and rebuilds the hash.
-3. Fields omitted from the hash keep their `initialValues` or binder defaults.
+3. Omitted string, `null`, and array fields restore as empty values. Omitted booleans keep their checkbox defaults, and omitted numbers keep their runtime template values because the value model has no separate empty-number state.
 4. If no known form field is present in the hash, FormSaver falls back to `localStorage` or `sessionStorage`.
-5. When the page opens without a recognized form hash, FormSaver restores the form from browser storage and automatically rebuilds the complete hash.
-6. After restoration, FormSaver normalizes the hash so it contains the complete current state.
+5. When the page opens without a recognized form hash, FormSaver restores the form from browser storage and automatically rebuilds the compact hash.
+6. After restoration, FormSaver normalizes the hash so it contains non-empty values and only checkbox states that differ from their defaults.
 
 This avoids mixing a shared URL with stale values from the current browser. The focused-field exception is deliberately narrow: if any other recognized hash value differs from storage, FormSaver treats the URL as a genuinely different shared state and keeps the hash authoritative. The hash is treated as belonging to the initialized FormSaver scope, so enabling this option replaces the existing hash content. The same restore order is used by controlled and DOM-based APIs.
 
@@ -236,17 +236,19 @@ const form = useFormSaver<SettingsForm>({
 - `restore` defaults to `true`. Set it to `false` to write values to the hash without restoring from it.
 - `historyMode` defaults to `'replace'`, which avoids adding a browser-history entry for every saved change. Use `'push'` only when each synchronized state should become a separate history entry.
 - `clearUrlHashValues()` removes the synchronized hash without changing form state or browser storage.
-- `restoreUrlHashFromStorage()` explicitly rebuilds the hash from the complete stored value set. Normally this is unnecessary because `urlHash: true` performs the same synchronization automatically when FormSaver initializes. It is useful when a router keeps the form component mounted while hiding and showing its route.
+- `restoreUrlHashFromStorage()` explicitly rebuilds the compact hash from the complete stored value set. Normally this is unnecessary because `urlHash: true` performs the same synchronization automatically when FormSaver initializes. It is useful when a router keeps the form component mounted while hiding and showing its route.
 
-The same explicit operation is also exported as a standalone helper:
+The same explicit operation is also exported as a standalone helper. Pass `defaultValues` when calling it outside an active FormSaver hook so default checkbox state can be omitted correctly:
 
 ```ts
-restoreUrlHashFromStorage<SettingsForm>('settings-form')
+restoreUrlHashFromStorage<SettingsForm>('settings-form', {
+    defaultValues: initialValues
+})
 ```
 
 Runtime type restoration for controlled forms uses `initialValues` and defaults registered by `bind.*`, because TypeScript types do not exist at runtime. DOM mode infers the runtime value template from the native controls currently present in its scope. Passing `initialValues` is recommended when controlled URL synchronization includes numbers, booleans, or arrays.
 
-Text hash values preserve case and explicit empty strings. Numeric and boolean values are parsed according to the runtime template.
+Text hash values preserve case. Empty values are intentionally absent from the hash; numeric and boolean values are parsed according to the runtime template, including compact checkbox `1` / `0` values.
 
 ### Reload while a field is focused
 
@@ -613,7 +615,7 @@ useFormSaver<TValues>({
 | `version`            | `undefined`      | Optional storage format/application version saved in metadata.                                                                                                                                              |
 | `mergeUnknownKeys`   | `true`           | Preserve stored fields that are not present in the current form state.                                                                                                                                      |
 | `restoreUnknownKeys` | `false`          | Include unknown stored fields in React state. Usually keep this `false`.                                                                                                                                    |
-| `urlHash`            | `false`          | Set to `true` to restore from and mirror all controlled values into readable URL hash parameters. The object form supports `restore` and `historyMode`.                                                     |
+| `urlHash`            | `false`          | Set to `true` to restore from and mirror a compact controlled state into readable URL hash parameters. Empty values and default checkbox state are omitted. The object form supports `restore` and `historyMode`. |
 | `mapBeforeSave`      | `undefined`      | Transform values before writing them to storage.                                                                                                                                                            |
 | `mapAfterLoad`       | `undefined`      | Transform or reject values after loading them from storage.                                                                                                                                                 |
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |
@@ -732,7 +734,7 @@ const result = {
 }
 ```
 
-`urlHash` has the same `true` and object forms as the controlled hook. With `urlHash: true`, DOM controls restore from a recognized hash first, otherwise from browser storage, and the full hash is recreated automatically after mount.
+`urlHash` has the same `true` and object forms as the controlled hook. With `urlHash: true`, DOM controls restore from a recognized hash first, otherwise from browser storage, and the compact hash is recreated automatically after mount. Native `defaultChecked` determines whether a standalone checkbox can be omitted; a non-default checked state is written as `1`, and a non-default unchecked state as `0`.
 
 By default, password fields, hidden inputs, file/image/button/reset/submit inputs, readonly inputs, and readonly textareas are not saved. Controls matching `[data-form-saver-ignore]` or `.no-save`, or inside an element matching those selectors, are skipped.
 

@@ -91,6 +91,7 @@ const ControlledDemoWithoutInitialValues = () => {
 }
 
 interface ControlledDemoProps {
+    initialValues?: SettingsFormValues
     debounceMs?: number
     urlHash?: boolean
     saveEvent?: FormSaverSaveEvent
@@ -99,6 +100,7 @@ interface ControlledDemoProps {
 }
 
 const ControlledDemo = ({
+    initialValues = INITIAL_VALUES,
     debounceMs = 0,
     urlHash = false,
     saveEvent,
@@ -107,7 +109,7 @@ const ControlledDemo = ({
 }: ControlledDemoProps) => {
     const formSaver = useFormSaver<SettingsFormValues>({
         storageKey: STORAGE_KEY,
-        initialValues: INITIAL_VALUES,
+        initialValues,
         debounceMs,
         saveEvent,
         autosaveIntervalSeconds,
@@ -354,6 +356,47 @@ describe('useFormSaver', () => {
         })
     })
 
+    it('stores checkbox deviations as 1/0 and omits the default state', async () => {
+        const { container } = render(<ControlledDemo urlHash />)
+        const enabled = getInput(container, 'enabled')
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('enabled')).toBe('1')
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+
+        const checkedByDefaultValues: SettingsFormValues = {
+            ...INITIAL_VALUES,
+            enabled: true
+        }
+        cleanup()
+        window.localStorage.clear()
+        window.history.replaceState(null, '', '/')
+
+        const checkedByDefaultRender = render(
+            <ControlledDemo initialValues={checkedByDefaultValues} urlHash />
+        )
+        const checkedByDefault = getInput(checkedByDefaultRender.container, 'enabled')
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+
+        fireEvent.click(checkedByDefault)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('enabled')).toBe('0')
+        })
+    })
+
     it('restores URL hash values before localStorage and persists the selected source', async () => {
         writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
             title: 'Storage title',
@@ -365,7 +408,7 @@ describe('useFormSaver', () => {
         window.history.replaceState(
             null,
             '',
-            '/#title=Hash+title&enabled=true&mode=accurate&tags=a&tags=b&notes=Hash+notes'
+            '/#title=Hash+title&enabled=1&mode=accurate&tags=a&tags=b&notes=Hash+notes'
         )
 
         const { container } = render(<ControlledDemo urlHash />)
@@ -422,7 +465,7 @@ describe('useFormSaver', () => {
             tags: ['a'],
             notes: 'Old notes'
         })
-        const oldHash = '#title=Old+title&enabled=false&mode=fast&tags=a&notes=Old+notes'
+        const oldHash = '#title=Old+title&mode=fast&tags=a&notes=Old+notes'
         window.history.replaceState(null, '', `/${oldHash}`)
 
         const firstRender = render(<ControlledDemo debounceMs={5000} urlHash />)
@@ -465,7 +508,7 @@ describe('useFormSaver', () => {
             tags: ['a'],
             notes: 'Old notes'
         })
-        const oldHash = '#title=Old+title&enabled=false&mode=fast&tags=a&notes=Old+notes'
+        const oldHash = '#title=Old+title&mode=fast&tags=a&notes=Old+notes'
         window.history.replaceState(null, '', `/${oldHash}`)
 
         const firstRender = render(<ControlledDemo debounceMs={5000} urlHash />)
@@ -483,7 +526,7 @@ describe('useFormSaver', () => {
         window.history.replaceState(
             null,
             '',
-            '/#title=Shared+title&enabled=true&mode=accurate&tags=b&notes=Shared+notes'
+            '/#title=Shared+title&enabled=1&mode=accurate&tags=b&notes=Shared+notes'
         )
 
         const secondRender = render(<ControlledDemo debounceMs={5000} urlHash />)
@@ -510,7 +553,7 @@ describe('useFormSaver', () => {
 
         const params = new URLSearchParams(window.location.hash.slice(1))
         expect(params.get('title')).toBe('Stored for hash')
-        expect(params.get('enabled')).toBe('true')
+        expect(params.get('enabled')).toBe('1')
         expect(params.getAll('tags')).toEqual(['b'])
     })
 

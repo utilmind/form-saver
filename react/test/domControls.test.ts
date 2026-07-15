@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import { collectDomFormValues, resetDomFormValues, restoreDomFormValues } from '../src/domControls'
+import {
+    collectDomFormDefaultValues,
+    collectDomFormValues,
+    resetDomFormValues,
+    restoreDomFormValues
+} from '../src/domControls'
 
 class FakeBaseControl {
     public name = ''
@@ -168,6 +173,41 @@ describe('DOM control helpers', () => {
             features: ['ocr'],
             mode: 'accurate',
             language: 'ru',
+            tags: ['a', 'c']
+        })
+    })
+
+    it('collects native default values separately from current values', () => {
+        const root = new FakeRoot([
+            new FakeInput('title', 'text', 'Changed title', false, 'Default title'),
+            new FakeTextArea('notes', 'Changed notes', 'Default notes'),
+            new FakeInput('enabled', 'checkbox', 'on', false, 'on', true),
+            new FakeInput('features', 'checkbox', 'ocr', false, 'ocr', true),
+            new FakeInput('features', 'checkbox', 'llm', true, 'llm', false),
+            new FakeInput('mode', 'radio', 'fast', false, 'fast', true),
+            new FakeInput('mode', 'radio', 'accurate', true, 'accurate', false),
+            new FakeSelect('language', [
+                new FakeOption('en', false, true),
+                new FakeOption('ru', true, false)
+            ]),
+            new FakeSelect(
+                'tags',
+                [
+                    new FakeOption('a', false, true),
+                    new FakeOption('b', true, false),
+                    new FakeOption('c', true, true)
+                ],
+                true
+            )
+        ])
+
+        expect(collectDomFormDefaultValues(root as unknown as ParentNode)).toEqual({
+            title: 'Default title',
+            notes: 'Default notes',
+            enabled: true,
+            features: ['ocr'],
+            mode: 'fast',
+            language: 'en',
             tags: ['a', 'c']
         })
     })

@@ -57,8 +57,11 @@ export interface FormSaverUrlHashOptions {
     historyMode?: FormSaverUrlHashHistoryMode
 }
 
-export interface RestoreUrlHashFromStorageOptions extends ReadStoredFormOptions {
+export interface RestoreUrlHashFromStorageOptions<
+    TValues extends FormSaverValuesConstraint<TValues> = FormSaverValues
+> extends ReadStoredFormOptions {
     historyMode?: FormSaverUrlHashHistoryMode
+    defaultValues?: Partial<TValues>
 }
 
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {

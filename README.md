@@ -26,7 +26,8 @@ The code in `react/` is a reusable React hook package. It is designed around con
 - preserve unknown stored fields when several related forms share the same `storageKey`;
 - store all React values as one readable JSON envelope per `storageKey`;
 - provide typed helpers for common controls: text inputs, textarea, checkbox, radio, select, and multi-select;
-- synchronously flush a pending focused-field edit during page reload and recover it even if the browser reloads with the previous hash.
+- synchronously flush a pending focused-field edit during page reload and recover it even if the browser reloads with the previous hash;
+- generate compact URL hashes that omit empty values and default checkbox state, using `1` / `0` for checkbox deviations.
 
 Basic example:
 

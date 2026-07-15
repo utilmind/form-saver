@@ -22,6 +22,7 @@ import {
 } from './defaults'
 import { useFocusedControlAutosave } from './focusedControlAutosave'
 import { subscribeToPageUnload } from './pageUnload'
+import { useBrowserLayoutEffect } from './reactEffects'
 import {
     mergeFormValues,
     prepareFormValuesForSave,
@@ -42,8 +43,10 @@ import type {
 } from './types'
 import {
     clearFormValuesFromUrlHash,
+    getRegisteredUrlHashDefaultValues,
     resolveFormRestoreSource,
     restoreUrlHashFromStorage as restoreStoredUrlHash,
+    subscribeToUrlHashDefaultValues,
     writeFormValuesToUrlHash
 } from './urlHash'
 import { areFormSaverValueMapsEqual, haveFormSaverValuesChanged } from './valueEquality'
@@ -236,6 +239,16 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         initialValuesRef.current = initialValues ?? emptyInitialValuesRef.current
     }, [initialValues])
 
+    useBrowserLayoutEffect(() => {
+        if (!storageKey) {
+            return
+        }
+
+        return subscribeToUrlHashDefaultValues(storageKey, storage, () =>
+            buildResetValues<TValues>(initialValuesRef.current, registeredDefaultsRef.current)
+        )
+    }, [storage, storageKey])
+
     useEffect(() => {
         initialHashSyncPendingRef.current = !saveOnMount
         pendingSaveRef.current = saveOnMount
@@ -364,7 +377,11 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                         newlySaved?.values ??
                         mergeFormValues<TValues>(storedValues, valuesToSave, mergeUnknownKeys)
 
-                    writeFormValuesToUrlHash<TValues>(hashValues, urlHashHistoryMode)
+                    writeFormValuesToUrlHash<TValues>(
+                        hashValues,
+                        urlHashHistoryMode,
+                        getRegisteredUrlHashDefaultValues<TValues>(storageKey, storage)
+                    )
                 }
 
                 if (saveToStorage && currentStored) {

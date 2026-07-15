@@ -6,7 +6,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { App } from '../demo/src/App'
-import { STORAGE_KEYS } from '../demo/src/demo-shared'
+import { initialCustomAddon, initialNativeSettings, STORAGE_KEYS } from '../demo/src/demo-shared'
 import { readStoredForm, writeStoredForm } from '../src/storage'
 import { serializeFormValuesToUrlHash } from '../src/urlHash'
 
@@ -44,8 +44,9 @@ describe('demo URL synchronization', () => {
         expect(window.location.pathname).toBe('/')
         expect(window.location.search).toBe('?demo=dom-hook')
         expect(params.get('projectName')).toBe('DOM project')
-        expect(params.get('emailNotifications')).toBe('true')
+        expect(params.get('emailNotifications')).toBe('1')
         expect(params.getAll('features')).toEqual(['ocr', 'geo'])
+        expect(params.get('customReviewed')).toBe('1')
         expect(params.get('customReviewLevel')).toBe('full')
     })
 
@@ -114,7 +115,10 @@ describe('demo URL synchronization', () => {
             customReviewed: false,
             customReviewLevel: 'quick'
         }
-        const staleHash = serializeFormValuesToUrlHash(oldValues)
+        const staleHash = serializeFormValuesToUrlHash(oldValues, {
+            ...initialNativeSettings,
+            ...initialCustomAddon
+        })
 
         writeStoredForm(storageKey, oldValues)
         window.history.replaceState(null, '', `/?demo=scope-component${staleHash}`)
