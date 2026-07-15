@@ -47,7 +47,6 @@ const parseNumber = (value: string): number | undefined => {
     }
 
     const parsed = Number(value)
-
     return Number.isFinite(parsed) ? parsed : undefined
 }
 
@@ -174,7 +173,6 @@ export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesCons
     }
 
     const serialized = params.toString()
-
     return serialized ? `#${serialized}` : ''
 }
 
@@ -184,7 +182,6 @@ const updateBrowserHash = (nextHash: string, historyMode: FormSaverUrlHashHistor
     }
 
     const normalizedHash = nextHash && nextHash.charAt(0) !== '#' ? `#${nextHash}` : nextHash
-
     if (window.location.hash === normalizedHash) {
         return true
     }
@@ -215,7 +212,6 @@ export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstra
     options: RestoreUrlHashFromStorageOptions = {}
 ): StoredFormSaverData<TValues> | null => {
     const stored = readStoredForm<TValues>(storageKey, { storage: options.storage })
-
     if (!stored) {
         return null
     }
