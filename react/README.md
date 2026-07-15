@@ -207,13 +207,14 @@ Primitive values use one `name=value` pair. Arrays use repeated parameters, and 
 
 Restore order is deterministic:
 
-1. If the hash contains at least one known form field, the hash is the restore source and browser storage is ignored for that restore.
-2. Fields omitted from the hash keep their `initialValues` or binder defaults.
-3. If no known form field is present in the hash, FormSaver falls back to `localStorage` or `sessionStorage`.
-4. When the page opens without a recognized form hash, FormSaver restores the form from browser storage and automatically rebuilds the complete hash.
-5. After restoration, FormSaver normalizes the hash so it contains the complete current state.
+1. If the hash contains at least one known form field, the hash is normally the restore source and browser storage is ignored for that restore.
+2. The reload exception is a focused field that was synchronously flushed during `beforeunload` while the browser kept the previous hash for F5/reload. If only that field differs, FormSaver uses the newer stored state and rebuilds the hash.
+3. Fields omitted from the hash keep their `initialValues` or binder defaults.
+4. If no known form field is present in the hash, FormSaver falls back to `localStorage` or `sessionStorage`.
+5. When the page opens without a recognized form hash, FormSaver restores the form from browser storage and automatically rebuilds the complete hash.
+6. After restoration, FormSaver normalizes the hash so it contains the complete current state.
 
-This avoids mixing a shared URL with stale values from the current browser. The hash is treated as belonging to the initialized FormSaver scope, so enabling this option replaces the existing hash content. The same restore order is used by controlled and DOM-based APIs.
+This avoids mixing a shared URL with stale values from the current browser. The focused-field exception is deliberately narrow: if any other recognized hash value differs from storage, FormSaver treats the URL as a genuinely different shared state and keeps the hash authoritative. The hash is treated as belonging to the initialized FormSaver scope, so enabling this option replaces the existing hash content. The same restore order is used by controlled and DOM-based APIs.
 
 Use the object form for one-way mirroring or explicit browser-history behavior:
 
@@ -240,6 +241,16 @@ restoreUrlHashFromStorage<SettingsForm>('settings-form')
 ```
 
 Runtime type restoration for controlled forms uses `initialValues` and defaults registered by `bind.*`, because TypeScript types do not exist at runtime. DOM mode infers the runtime value template from the native controls currently present in its scope. Passing `initialValues` is recommended when controlled URL synchronization includes numbers, booleans, or arrays.
+
+Text hash values preserve case and explicit empty strings. Numeric and boolean values are parsed according to the runtime template.
+
+### Reload while a field is focused
+
+Both React APIs install a `beforeunload` flush. This covers F5 or another immediate page unload that occurs before the normal debounce or DOM `change` event has saved the latest focused field.
+
+For DOM mode with the default `saveEvent: 'change'`, typing into a text control does not save until editing is committed, commonly on blur. FormSaver still marks the form dirty on the native `input` event and performs a synchronous save during `beforeunload`. Controlled `useFormSaver` binders receive React `onChange` updates while typing, but the same unload flush protects changes that are still inside the configured debounce window.
+
+Some browsers can persist the storage write but reload the previous address-bar hash. FormSaver stores a small per-`storageKey` marker in `sessionStorage` containing the focused field name and the exact save timestamp. On the next initialization it uses storage only when that one field is the sole mismatch. This is automatic when `urlHash` is enabled; applications do not need their own unload handler.
 
 ### Navigation between pages
 
@@ -395,7 +406,7 @@ export function SettingsForm() {
 }
 ```
 
-By default, DOM mode saves on browser `change` events. For text inputs and textareas this usually means "after editing is committed", commonly when the field loses focus. Checkboxes, radio buttons, and selects fire `change` immediately. If the user types into a focused field and leaves/reloads before blur, FormSaver flushes pending DOM changes on `beforeunload`.
+By default, DOM mode saves on browser `change` events. For text inputs and textareas this usually means "after editing is committed", commonly when the field loses focus. Checkboxes, radio buttons, and selects fire `change` immediately. Native `input` events still mark the form dirty, so if the user leaves or reloads before blur, FormSaver synchronously flushes the current DOM values on `beforeunload`. When URL hash synchronization is enabled, the focused-field reload recovery described above prevents an older hash from undoing that save.
 
 Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In that mode, `debounceMs` controls the delay before writing to storage. The default debounce value is exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS` and is currently `150`.
 

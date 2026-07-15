@@ -15,6 +15,7 @@ import {
     resetDomFormValues,
     restoreDomFormValues
 } from './domControls'
+import { subscribeToPageUnload } from './pageUnload'
 import {
     mergeFormValues,
     prepareFormValuesForSave,
@@ -31,7 +32,7 @@ import type {
 } from './types'
 import {
     clearFormValuesFromUrlHash,
-    readFormValuesFromUrlHash,
+    resolveFormRestoreSource,
     restoreUrlHashFromStorage as restoreStoredUrlHash,
     writeFormValuesToUrlHash
 } from './urlHash'
@@ -222,24 +223,33 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
 
             try {
                 const initialValues = collectDomFormValues(currentRoot, controlOptions)
-                const hashValues =
+                const restoreSource =
                     urlHashEnabled && restoreFromUrlHash && typeof window !== 'undefined'
-                        ? readFormValuesFromUrlHash<FormSaverValues>(
+                        ? resolveFormRestoreSource<FormSaverValues>(
+                              storageKey,
                               window.location.hash,
-                              initialValues
+                              initialValues,
+                              { storage }
                           )
-                        : null
-                const stored = hashValues
-                    ? null
-                    : readStoredForm<FormSaverValues>(storageKey, { storage })
-                const sourceValues = hashValues ?? stored?.values
+                        : (() => {
+                              const stored = readStoredForm<FormSaverValues>(storageKey, {
+                                  storage
+                              })
+
+                              return {
+                                  source: stored ? ('storage' as const) : null,
+                                  values: stored?.values ?? null,
+                                  stored
+                              }
+                          })()
+                const sourceValues = restoreSource.values
 
                 if (!sourceValues) {
                     writeValuesToHash(initialValues)
                     return null
                 }
 
-                const meta = stored?.meta ?? createRestoreMeta(version)
+                const meta = restoreSource.stored?.meta ?? createRestoreMeta(version)
                 const loadedValues = mapAfterLoadRef.current
                     ? mapAfterLoadRef.current(sourceValues, meta)
                     : sourceValues
@@ -265,7 +275,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                     meta
                 }
 
-                if (hashValues) {
+                if (restoreSource.source === 'hash') {
                     const saved = writeStoredForm<FormSaverValues>(storageKey, completeValues, {
                         storage,
                         version,
@@ -435,23 +445,25 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     }, [enabled, root, saveEvent, scheduleSave])
 
     useEffect(() => {
-        if (!root || !enabled || typeof window === 'undefined') {
+        if (!root || !enabled) {
             return
         }
 
-        const handleBeforeUnload = (): void => {
-            if (isDirtyRef.current || timerRef.current !== null) {
+        return subscribeToPageUnload({
+            storageKey,
+            storage,
+            trackUrlHash: urlHashEnabled && restoreFromUrlHash,
+            save: () => {
+                if (!isDirtyRef.current && timerRef.current === null) {
+                    return null
+                }
+
                 clearTimer(timerRef)
-                saveCurrentRoot(root)
-            }
-        }
-
-        window.addEventListener('beforeunload', handleBeforeUnload)
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload)
-        }
-    }, [enabled, root, saveCurrentRoot])
+                return saveCurrentRoot(root)
+            },
+            ownsField: (_fieldName, activeElement) => root.contains(activeElement)
+        })
+    }, [enabled, restoreFromUrlHash, root, saveCurrentRoot, storage, storageKey, urlHashEnabled])
 
     return useMemo<UseFormSaverDomResult<TRoot>>(
         () => ({

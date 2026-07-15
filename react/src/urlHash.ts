@@ -11,8 +11,10 @@
  *   TypeScript generic types do not exist in the browser at runtime.
  */
 
+import { shouldPreferStorageAfterPageUnload } from './pageUnload'
 import { readStoredForm } from './storage'
 import type {
+    BrowserStorageName,
     FormSaverPrimitive,
     FormSaverUrlHashHistoryMode,
     FormSaverValue,
@@ -31,30 +33,28 @@ const parsePrimitiveByTemplate = (
     value: string,
     templateValue: FormSaverPrimitive | undefined
 ): FormSaverPrimitive | undefined => {
-    value = value.trim()
-    if (!value) {
-        return undefined
-    }
-
     if (templateValue === null) {
         return value === 'null' ? null : value
     }
 
     if (typeof templateValue === 'number') {
-        // parse Number
-        const parsed = Number(value)
+        const normalizedValue = value.trim()
+        if (!normalizedValue) {
+            return undefined
+        }
+
+        const parsed = Number(normalizedValue)
         return Number.isFinite(parsed) ? parsed : undefined
     }
 
-    value = value.toLowerCase()
     if (typeof templateValue === 'boolean') {
-        // parse Boolean
-        if (!value || value === '0' || value === 'off') {
+        const normalizedValue = value.trim().toLowerCase()
+        if (!normalizedValue || normalizedValue === '0' || normalizedValue === 'off') {
             return false
         }
 
-        value = value[0]
-        return value !== 'f' && value !== 'n'
+        const firstCharacter = normalizedValue[0]
+        return firstCharacter !== 'f' && firstCharacter !== 'n'
     }
 
     return value
@@ -134,6 +134,63 @@ export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstra
     }
 
     return hasOwnedValue ? values : null
+}
+
+export type FormRestoreSource<TValues extends FormSaverValuesConstraint<TValues>> = {
+    source: 'hash' | 'storage' | null
+    values: Partial<TValues> | null
+    stored: StoredFormSaverData<TValues> | null
+}
+
+interface ResolveFormRestoreSourceOptions {
+    storage?: BrowserStorageName
+    restoreUnknownKeys?: boolean
+}
+
+export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstraint<TValues>>(
+    storageKey: string,
+    hash: string,
+    templateValues: TValues,
+    options: ResolveFormRestoreSourceOptions = {}
+): FormRestoreSource<TValues> => {
+    const storageName = options.storage ?? 'localStorage'
+    const hashValues = readFormValuesFromUrlHash<TValues>(
+        hash,
+        templateValues,
+        options.restoreUnknownKeys
+    )
+    const stored = readStoredForm<TValues>(storageKey, { storage: storageName })
+
+    if (hashValues) {
+        if (
+            stored &&
+            shouldPreferStorageAfterPageUnload<TValues>(storageKey, storageName, hashValues, stored)
+        ) {
+            return {
+                source: 'storage',
+                values: stored.values,
+                stored
+            }
+        }
+
+        return {
+            source: 'hash',
+            values: hashValues,
+            stored: null
+        }
+    }
+
+    return stored
+        ? {
+              source: 'storage',
+              values: stored.values,
+              stored
+          }
+        : {
+              source: null,
+              values: null,
+              stored: null
+          }
 }
 
 export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(

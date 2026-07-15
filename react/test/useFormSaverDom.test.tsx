@@ -184,6 +184,46 @@ describe('useFormSaverDom', () => {
         })
     })
 
+    it('restores the focused DOM value from storage when reload keeps a stale hash', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Old DOM title',
+            notes: 'Old DOM notes',
+            enabled: false
+        })
+        const oldHash = '#title=Old+DOM+title&notes=Old+DOM+notes&enabled=false'
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const firstRender = render(<DomDemo debounceMs={5000} urlHash />)
+        const title = getInput(firstRender.container, 'title')
+
+        await waitFor(() => {
+            expect(title.value).toBe('Old DOM title')
+        })
+
+        title.focus()
+        fireEvent.input(title, { target: { value: 'Typed DOM value before F5' } })
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Old DOM title')
+
+        window.dispatchEvent(new Event('beforeunload'))
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Typed DOM value before F5')
+
+        firstRender.unmount()
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const secondRender = render(<DomDemo debounceMs={5000} urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(secondRender.container, 'title').value).toBe(
+                'Typed DOM value before F5'
+            )
+        })
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Typed DOM value before F5'
+            )
+        })
+    })
+
     it('resets native controls to defaults and saves the reset values', async () => {
         const { container, getByText } = render(<DomDemo />)
         const title = getInput(container, 'title')

@@ -84,6 +84,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Decide whether URL hash synchronization should be reintroduced later. Decision: postpone; not part of the React MVP.
 - [x] Decide whether per-field load transforms are needed in the hook API. Decision: use form-level `mapAfterLoad` for now; per-field transforms can be added after real usage.
 - [x] Decide whether dirty-state tracking is needed after the demo app exists. Decision: keep dirty-state internal only; it is used for immediate `beforeunload` flushing and is not exposed in the public API.
+- [x] Reproduce the legacy focused-field F5 recovery: flush pending values on `beforeunload`, remember the active field per storage key, and prefer storage only when a stale hash differs in that field alone.
 - [x] Decide whether validation integration should be built-in or left to application code. Decision: no built-in validation integration; FormSaver saves and restores the user's current input even if the application later considers it invalid.
 
 ## Phase 5: Tests

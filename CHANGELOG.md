@@ -14,6 +14,8 @@ All notable changes to this project will be documented in this file.
 - Added `restoreUrlHashFromStorage()` as both a hook helper and a standalone utility for route setups that keep form components mounted.
 - Enabled URL hash synchronization in all three `react/demo` form examples.
 - Added URL hash unit and hook integration tests.
+- Added synchronous `beforeunload` flushing for pending controlled-form changes.
+- Added focused-field reload recovery for controlled, DOM-hook, and scope APIs, matching the legacy jQuery behavior without weakening shared-hash priority.
 
 ### Changed
 
@@ -21,6 +23,7 @@ All notable changes to this project will be documented in this file.
 - Changed the demo navigation to use clean destination URLs and rely on FormSaver initialization, rather than demo-specific localStorage-to-hash serialization.
 - Preserved merged values from shared storage keys when multiple FormSaver scopes synchronize one hash.
 - Updated the React and repository documentation with URL hash usage, page-navigation behavior, and restore semantics.
+- Fixed URL hash parsing so string values preserve their original case and explicit empty strings remain empty strings.
 
 ## [2026-05-11]: Migration from jQuery to React
 

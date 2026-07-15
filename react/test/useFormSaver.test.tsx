@@ -90,14 +90,15 @@ const ControlledDemoWithoutInitialValues = () => {
 }
 
 interface ControlledDemoProps {
+    debounceMs?: number
     urlHash?: boolean
 }
 
-const ControlledDemo = ({ urlHash = false }: ControlledDemoProps) => {
+const ControlledDemo = ({ debounceMs = 0, urlHash = false }: ControlledDemoProps) => {
     const formSaver = useFormSaver<SettingsFormValues>({
         storageKey: STORAGE_KEY,
         initialValues: INITIAL_VALUES,
-        debounceMs: 0,
+        debounceMs,
         urlHash
     })
 
@@ -299,6 +300,86 @@ describe('useFormSaver', () => {
             expect(params.get('title')).toBe('Changed for link')
             expect(params.getAll('tags')).toEqual(['a', 'b'])
         })
+    })
+
+    it('flushes focused controlled input and prefers storage over a stale hash after reload', async () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Old title',
+            enabled: false,
+            mode: 'fast',
+            tags: ['a'],
+            notes: 'Old notes'
+        })
+        const oldHash = '#title=Old+title&enabled=false&mode=fast&tags=a&notes=Old+notes'
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const firstRender = render(<ControlledDemo debounceMs={5000} urlHash />)
+        const title = getInput(firstRender.container, 'title')
+
+        await waitFor(() => {
+            expect(title.value).toBe('Old title')
+        })
+
+        title.focus()
+        fireEvent.change(title, { target: { value: 'Typed before F5' } })
+        expect(readStoredForm<SettingsFormValues>(STORAGE_KEY)?.values.title).toBe('Old title')
+
+        window.dispatchEvent(new Event('beforeunload'))
+        expect(readStoredForm<SettingsFormValues>(STORAGE_KEY)?.values.title).toBe(
+            'Typed before F5'
+        )
+
+        firstRender.unmount()
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const secondRender = render(<ControlledDemo debounceMs={5000} urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(secondRender.container, 'title').value).toBe('Typed before F5')
+        })
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Typed before F5'
+            )
+        })
+    })
+
+    it('keeps a genuinely different shared hash authoritative after page unload', async () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Old title',
+            enabled: false,
+            mode: 'fast',
+            tags: ['a'],
+            notes: 'Old notes'
+        })
+        const oldHash = '#title=Old+title&enabled=false&mode=fast&tags=a&notes=Old+notes'
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const firstRender = render(<ControlledDemo debounceMs={5000} urlHash />)
+        const title = getInput(firstRender.container, 'title')
+
+        await waitFor(() => {
+            expect(title.value).toBe('Old title')
+        })
+
+        title.focus()
+        fireEvent.change(title, { target: { value: 'Typed before navigation' } })
+        window.dispatchEvent(new Event('beforeunload'))
+        firstRender.unmount()
+
+        window.history.replaceState(
+            null,
+            '',
+            '/#title=Shared+title&enabled=true&mode=accurate&tags=b&notes=Shared+notes'
+        )
+
+        const secondRender = render(<ControlledDemo debounceMs={5000} urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(secondRender.container, 'title').value).toBe('Shared title')
+        })
+        expect(getInput(secondRender.container, 'enabled').checked).toBe(true)
+        expect(getTextarea(secondRender.container, 'notes').value).toBe('Shared notes')
     })
 
     it('can explicitly restore the URL hash from storage', () => {

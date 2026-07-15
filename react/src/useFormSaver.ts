@@ -15,6 +15,7 @@
 
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
+import { subscribeToPageUnload } from './pageUnload'
 import {
     mergeFormValues,
     prepareFormValuesForSave,
@@ -28,13 +29,14 @@ import type {
     FormSaverPrimitive,
     FormSaverValue,
     FormSaverValuesConstraint,
+    StoredFormSaverData,
     UseFormSaverBinders,
     UseFormSaverOptions,
     UseFormSaverResult
 } from './types'
 import {
     clearFormValuesFromUrlHash,
-    readFormValuesFromUrlHash,
+    resolveFormRestoreSource,
     restoreUrlHashFromStorage as restoreStoredUrlHash,
     writeFormValuesToUrlHash
 } from './urlHash'
@@ -190,12 +192,15 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const initialValuesRef = useRef<TValues>(initialValues ?? emptyInitialValuesRef.current)
     const registeredDefaultsRef = useRef<Partial<TValues>>({})
     const skipNextSaveRef = useRef(!saveOnMount)
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const isDirtyRef = useRef(false)
     const [values, setValuesState] = useState<TValues>(
         initialValues ?? emptyInitialValuesRef.current
     )
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
+    const valuesRef = useLatestRef(values)
     const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
     const mapAfterLoadRef = useLatestRef(mapAfterLoad)
     const onRestoreRef = useLatestRef(onRestore)
@@ -220,25 +225,36 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         }
 
         try {
-            const hashValues =
+            const restoreSource =
                 urlHashEnabled && restoreFromUrlHash && typeof window !== 'undefined'
-                    ? readFormValuesFromUrlHash<TValues>(
+                    ? resolveFormRestoreSource<TValues>(
+                          storageKey,
                           window.location.hash,
                           buildResetValues<TValues>(
                               initialValuesRef.current,
                               registeredDefaultsRef.current
                           ),
-                          restoreUnknownKeys
+                          {
+                              storage,
+                              restoreUnknownKeys
+                          }
                       )
-                    : null
-            const stored = hashValues ? null : readStoredForm<TValues>(storageKey, { storage })
-            const sourceValues = hashValues ?? stored?.values
+                    : (() => {
+                          const stored = readStoredForm<TValues>(storageKey, { storage })
+
+                          return {
+                              source: stored ? ('storage' as const) : null,
+                              values: stored?.values ?? null,
+                              stored
+                          }
+                      })()
+            const sourceValues = restoreSource.values
 
             if (!sourceValues) {
                 return
             }
 
-            const meta: FormSaverMeta = stored?.meta ?? {
+            const meta: FormSaverMeta = restoreSource.stored?.meta ?? {
                 savedAt: Date.now(),
                 ...(version === undefined ? {} : { version })
             }
@@ -263,7 +279,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
             // Hash values are an explicit navigation source and should also become
             // the current browser-storage state even when saveOnMount is false.
-            if (hashValues) {
+            if (restoreSource.source === 'hash') {
                 skipNextSaveRef.current = false
             }
         } catch (error) {
@@ -286,9 +302,13 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
     // Persist one prepared value set to storage and/or the URL hash.
     const persistValues = useCallback(
-        (nextValues: TValues, saveToStorage: boolean, saveToUrlHash: boolean): void => {
+        (
+            nextValues: TValues,
+            saveToStorage: boolean,
+            saveToUrlHash: boolean
+        ): StoredFormSaverData<TValues> | null => {
             if (!enabled || !storageKey) {
-                return
+                return null
             }
 
             try {
@@ -317,11 +337,15 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                 }
 
                 if (saved) {
+                    isDirtyRef.current = false
                     setLastSavedAt(saved.meta.savedAt)
                     onSaveRef.current?.(saved.values, saved.meta)
                 }
+
+                return saved
             } catch (error) {
                 onErrorRef.current?.(error)
+                return null
             }
         },
         [
@@ -355,17 +379,22 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             return
         }
 
-        const timerId = setTimeout(() => {
+        saveTimerRef.current = setTimeout(() => {
+            saveTimerRef.current = null
             persistValues(values, true, true)
         }, debounceMs)
 
         return () => {
-            clearTimeout(timerId)
+            if (saveTimerRef.current !== null) {
+                clearTimeout(saveTimerRef.current)
+                saveTimerRef.current = null
+            }
         }
     }, [debounceMs, enabled, hasRestored, persistValues, values])
 
     const setValue = useCallback(
         <K extends FormSaverFieldName<TValues>>(name: K, value: TValues[K]): void => {
+            isDirtyRef.current = true
             setValuesState((current) => {
                 const patch: Partial<TValues> = {}
 
@@ -378,6 +407,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
 
     const setValues = useCallback(
         (patch: Partial<TValues> | ((current: TValues) => Partial<TValues>)): void => {
+            isDirtyRef.current = true
             setValuesState((current) => {
                 const resolvedPatch = typeof patch === 'function' ? patch(current) : patch
 
@@ -388,10 +418,12 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     )
 
     const replaceValues = useCallback((nextValues: TValues): void => {
+        isDirtyRef.current = true
         setValuesState(nextValues)
     }, [])
 
     const resetValues = useCallback((nextValues?: TValues): void => {
+        isDirtyRef.current = true
         setValuesState(
             nextValues ??
                 buildResetValues<TValues>(initialValuesRef.current, registeredDefaultsRef.current)
@@ -419,8 +451,49 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     }, [storage, storageKey, urlHashHistoryMode])
 
     const saveNow = useCallback((): void => {
-        persistValues(values, true, true)
-    }, [persistValues, values])
+        if (saveTimerRef.current !== null) {
+            clearTimeout(saveTimerRef.current)
+            saveTimerRef.current = null
+        }
+
+        persistValues(valuesRef.current, true, true)
+    }, [persistValues, valuesRef])
+
+    useEffect(() => {
+        if (!enabled || !hasRestored) {
+            return
+        }
+
+        return subscribeToPageUnload({
+            storageKey,
+            storage,
+            trackUrlHash: urlHashEnabled && restoreFromUrlHash,
+            save: () => {
+                if (!isDirtyRef.current && saveTimerRef.current === null) {
+                    return null
+                }
+
+                if (saveTimerRef.current !== null) {
+                    clearTimeout(saveTimerRef.current)
+                    saveTimerRef.current = null
+                }
+
+                return persistValues(valuesRef.current, true, true)
+            },
+            ownsField: (fieldName) =>
+                Object.prototype.hasOwnProperty.call(valuesRef.current, fieldName) ||
+                Object.prototype.hasOwnProperty.call(registeredDefaultsRef.current, fieldName)
+        })
+    }, [
+        enabled,
+        hasRestored,
+        persistValues,
+        restoreFromUrlHash,
+        storage,
+        storageKey,
+        urlHashEnabled,
+        valuesRef
+    ])
 
     const getValue = useCallback(
         <K extends FormSaverFieldName<TValues>>(
