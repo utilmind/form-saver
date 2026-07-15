@@ -31,6 +31,7 @@ All notable changes to this project will be documented in this file.
 - Fixed URL hash parsing so string values preserve their original case and explicit empty strings remain empty strings.
 - Fixed focused-field F5 recovery when multiple FormSaver instances share one `storageKey`; unload saves are now coordinated before the final reload marker is written.
 - Stopped rewriting the URL hash during `beforeunload`; the latest value is saved to storage and the hash is rebuilt after initialization, avoiding a visible new-hash → stale-hash → restored-hash sequence on F5.
+- Made Vitest startup compatible with Node 25+ by disabling Node's built-in Web Storage only for test workers, preventing it from shadowing jsdom `localStorage`/`sessionStorage`.
 
 ## [2026-05-11]: Migration from jQuery to React
 

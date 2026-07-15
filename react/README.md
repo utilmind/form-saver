@@ -37,6 +37,8 @@ npm run build
 
 The package can be tested locally through `npm pack` or a `file:` dependency before it is published to an npm registry.
 
+The test scripts use a small Node wrapper. On Node versions that expose built-in Web Storage, the wrapper launches Vitest with that Node-only implementation disabled so jsdom can provide browser-compatible `localStorage` and `sessionStorage`. This keeps the same commands working on supported older Node versions and on Node 25+.
+
 ## Using it from another local project
 
 The demo app intentionally imports the hook package from `src/` through a Vite alias so that local changes are visible immediately during package development. A real application should usually consume the package entry point instead, because that is the same path npm users will eventually use.
