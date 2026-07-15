@@ -3,12 +3,8 @@ name: React CI
 on:
     push:
         branches:
-            - master
-            - react2
     pull_request:
         branches:
-            - master
-            - react2
     workflow_dispatch:
 
 permissions:
