@@ -24,6 +24,7 @@ All notable changes to this project will be documented in this file.
 - Preserved merged values from shared storage keys when multiple FormSaver scopes synchronize one hash.
 - Updated the React and repository documentation with URL hash usage, page-navigation behavior, and restore semantics.
 - Fixed URL hash parsing so string values preserve their original case and explicit empty strings remain empty strings.
+- Fixed focused-field F5 recovery when multiple FormSaver instances share one `storageKey`; unload saves are now coordinated before the final reload marker is written.
 
 ## [2026-05-11]: Migration from jQuery to React
 

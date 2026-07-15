@@ -163,39 +163,118 @@ const areValuesEqual = (
     return true
 }
 
+type PageUnloadSubscription = SubscribeToPageUnloadOptions & {
+    id: number
+}
+
+type PageUnloadSubscriptionGroup = {
+    storageKey: string
+    storage: BrowserStorageName
+    trackUrlHash: boolean
+    focusedFieldName: string | null
+    subscriptions: PageUnloadSubscription[]
+}
+
+const pageUnloadSubscriptions = new Map<number, PageUnloadSubscription>()
+let nextPageUnloadSubscriptionId = 1
+let pageUnloadWindow: Window | null = null
+
+const handleBeforeUnload = (): void => {
+    const activeControl = getNamedActiveControl()
+    const groups = new Map<string, PageUnloadSubscriptionGroup>()
+
+    pageUnloadSubscriptions.forEach((subscription) => {
+        const groupId = getMarkerId(subscription.storageKey, subscription.storage)
+        let group = groups.get(groupId)
+
+        if (!group) {
+            group = {
+                storageKey: subscription.storageKey,
+                storage: subscription.storage,
+                trackUrlHash: false,
+                focusedFieldName: null,
+                subscriptions: []
+            }
+            groups.set(groupId, group)
+        }
+
+        group.trackUrlHash = group.trackUrlHash || subscription.trackUrlHash
+        group.subscriptions.push(subscription)
+
+        if (
+            activeControl &&
+            subscription.ownsField(activeControl.fieldName, activeControl.element)
+        ) {
+            group.focusedFieldName = activeControl.fieldName
+        }
+    })
+
+    groups.forEach((group) => {
+        let latestSaved: PageUnloadSaveResult = null
+
+        for (let index = 0; index < group.subscriptions.length; ++index) {
+            try {
+                const saved = group.subscriptions[index].save()
+
+                if (saved) {
+                    latestSaved = saved
+                }
+            } catch {
+                // One saver must not prevent another saver sharing the same storage key from flushing.
+            }
+        }
+
+        if (!group.trackUrlHash) {
+            return
+        }
+
+        writeMarker(
+            group.storageKey,
+            group.storage,
+            latestSaved && group.focusedFieldName
+                ? {
+                      fieldName: group.focusedFieldName,
+                      savedAt: latestSaved.meta.savedAt
+                  }
+                : null
+        )
+    })
+}
+
+const startPageUnloadListener = (targetWindow: Window): void => {
+    if (pageUnloadWindow === targetWindow) {
+        return
+    }
+
+    pageUnloadWindow?.removeEventListener('beforeunload', handleBeforeUnload)
+    targetWindow.addEventListener('beforeunload', handleBeforeUnload)
+    pageUnloadWindow = targetWindow
+}
+
+const stopPageUnloadListenerIfUnused = (): void => {
+    if (pageUnloadSubscriptions.size || !pageUnloadWindow) {
+        return
+    }
+
+    pageUnloadWindow.removeEventListener('beforeunload', handleBeforeUnload)
+    pageUnloadWindow = null
+}
+
 export const subscribeToPageUnload = (options: SubscribeToPageUnloadOptions): (() => void) => {
     if (typeof window === 'undefined') {
         return () => undefined
     }
 
-    const handleBeforeUnload = (): void => {
-        const activeControl = getNamedActiveControl()
-        const ownedFieldName =
-            activeControl && options.ownsField(activeControl.fieldName, activeControl.element)
-                ? activeControl.fieldName
-                : null
-        const saved = options.save()
-
-        if (!options.trackUrlHash) {
-            return
-        }
-
-        writeMarker(
-            options.storageKey,
-            options.storage,
-            saved && ownedFieldName
-                ? {
-                      fieldName: ownedFieldName,
-                      savedAt: saved.meta.savedAt
-                  }
-                : null
-        )
-    }
-
-    window.addEventListener('beforeunload', handleBeforeUnload)
+    const id = nextPageUnloadSubscriptionId++
+    pageUnloadSubscriptions.set(id, {
+        ...options,
+        id
+    })
+    startPageUnloadListener(window)
 
     return () => {
-        window.removeEventListener('beforeunload', handleBeforeUnload)
+        pageUnloadSubscriptions.delete(id)
+        stopPageUnloadListenerIfUnused()
     }
 }
 

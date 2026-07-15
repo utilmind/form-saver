@@ -7,7 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 
 import { App } from '../demo/src/App'
 import { STORAGE_KEYS } from '../demo/src/demo-shared'
-import { writeStoredForm } from '../src/storage'
+import { readStoredForm, writeStoredForm } from '../src/storage'
+import { serializeFormValuesToUrlHash } from '../src/urlHash'
 
 const getHashParams = (): URLSearchParams => new URLSearchParams(window.location.hash.slice(1))
 
@@ -18,6 +19,7 @@ describe('demo URL synchronization', () => {
 
     beforeEach(() => {
         window.localStorage.clear()
+        window.sessionStorage.clear()
         window.history.replaceState(null, '', '/?demo=controlled-bind')
     })
 
@@ -97,6 +99,50 @@ describe('demo URL synchronization', () => {
             expect(getHashParams().get('projectName')).toBe('Restored DOM route')
         })
         expect(screen.getByLabelText('Project name').value).toBe('Restored DOM route')
+    })
+
+    it('restores an unblurred scope field after F5 with multiple savers sharing storage', async () => {
+        const storageKey = STORAGE_KEYS['scope-component']
+        const oldValues = {
+            projectName: 'Old scope project',
+            emailNotifications: false,
+            mode: 'advanced',
+            density: 'compact',
+            features: ['ocr'],
+            tags: ['beta'],
+            notes: 'Old scope notes',
+            customReviewed: false,
+            customReviewLevel: 'quick'
+        }
+        const staleHash = serializeFormValuesToUrlHash(oldValues)
+
+        writeStoredForm(storageKey, oldValues)
+        window.history.replaceState(null, '', `/?demo=scope-component${staleHash}`)
+
+        const firstRender = render(<App />)
+        const projectName = await screen.findByLabelText('Project name')
+
+        expect(projectName.value).toBe('Old scope project')
+        projectName.focus()
+        fireEvent.input(projectName, { target: { value: 'Typed before F5' } })
+
+        expect(readStoredForm(storageKey)?.values.projectName).toBe('Old scope project')
+        expect(getHashParams().get('projectName')).toBe('Old scope project')
+
+        window.dispatchEvent(new Event('beforeunload'))
+
+        expect(readStoredForm(storageKey)?.values.projectName).toBe('Typed before F5')
+
+        firstRender.unmount()
+        window.history.replaceState(null, '', `/?demo=scope-component${staleHash}`)
+        render(<App />)
+
+        await waitFor(() => {
+            expect(screen.getByLabelText('Project name').value).toBe('Typed before F5')
+        })
+        await waitFor(() => {
+            expect(getHashParams().get('projectName')).toBe('Typed before F5')
+        })
     })
 
     it('hides the demo hash on About and restores it when returning to Demo', async () => {

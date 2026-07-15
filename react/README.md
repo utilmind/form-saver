@@ -252,6 +252,8 @@ For DOM mode with the default `saveEvent: 'change'`, typing into a text control 
 
 Some browsers can persist the storage write but reload the previous address-bar hash. FormSaver stores a small per-`storageKey` marker in `sessionStorage` containing the focused field name and the exact save timestamp. On the next initialization it uses storage only when that one field is the sole mismatch. This is automatic when `urlHash` is enabled; applications do not need their own unload handler.
 
+When multiple FormSaver instances intentionally share the same `storageKey`, they are coordinated through one page-unload dispatcher. Every pending scope is flushed first, and only then is the marker written with the timestamp of the final merged storage record. A later saver therefore cannot invalidate the marker created for the focused field.
+
 ### Navigation between pages
 
 Query parameters and hash fragments are not global browser state; they are parts of the current URL. A normal destination such as `/about/` contains neither, so a regular link or `history.pushState(null, '', '/about/')` removes both without a special FormSaver cleanup call.
