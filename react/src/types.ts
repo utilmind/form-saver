@@ -16,6 +16,7 @@ import type { ChangeEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
 export type FormSaverDomSaveEvent = 'change' | 'input'
+export type FormSaverUrlHashHistoryMode = 'replace' | 'push'
 
 export type FormSaverPrimitive = string | number | boolean | null
 export type FormSaverValue = FormSaverPrimitive | FormSaverPrimitive[]
@@ -51,6 +52,11 @@ export interface WriteStoredFormOptions<
     mapBeforeSave?: (values: Partial<TValues>) => Partial<TValues>
 }
 
+export interface FormSaverUrlHashOptions {
+    restore?: boolean
+    historyMode?: FormSaverUrlHashHistoryMode
+}
+
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {
     storageKey: string
     initialValues?: TValues
@@ -61,6 +67,7 @@ export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<T
     version?: string | number
     mergeUnknownKeys?: boolean
     restoreUnknownKeys?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     mapBeforeSave?: (values: Partial<TValues>) => Partial<TValues>
     mapAfterLoad?: (
         values: Partial<TValues>,
@@ -165,6 +172,7 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     replaceValues: (nextValues: TValues) => void
     resetValues: (nextValues?: TValues) => void
     clearStoredValues: () => void
+    clearUrlHashValues: () => void
     saveNow: () => void
     getValue: <K extends FormSaverFieldName<TValues>>(
         name: K,

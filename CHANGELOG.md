@@ -2,6 +2,22 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-07-15]: React URL hash synchronization
+
+### Added
+
+- Added optional readable URL hash synchronization to the controlled `useFormSaver` API through `urlHash: true`.
+- Added deterministic restore priority where a recognized URL hash overrides browser storage without mixing stale local values.
+- Added readable repeated hash parameters for array values and runtime type restoration based on `initialValues` or binder defaults.
+- Added `clearUrlHashValues()` and configurable `restore` / `historyMode` URL hash options.
+- Enabled URL hash synchronization in the `react/demo` controlled-bind example.
+- Added URL hash unit and hook integration tests.
+
+### Changed
+
+- Reused one prepared value set for browser storage and URL hash persistence so `mapBeforeSave` runs only once per save.
+- Updated the React and repository documentation with URL hash usage and restore semantics.
+
 ## [2026-05-11]: Migration from jQuery to React
 
 ### Added

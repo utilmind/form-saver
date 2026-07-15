@@ -18,6 +18,7 @@ export const ControlledBindTab = () => {
         initialValues: initialSettings,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
         onSave: refreshSavedJson,
         onError: (error: unknown): void => {
@@ -30,7 +31,7 @@ export const ControlledBindTab = () => {
             return 'Restoring saved controlled values...'
         }
 
-        return 'Ready. Each field is controlled by React state and saved through bind helpers.'
+        return 'Ready. Controlled values are synchronized with localStorage and the URL hash.'
     }, [form.hasRestored])
 
     const handleResultsPerPageChange = useCallback(
@@ -49,6 +50,7 @@ export const ControlledBindTab = () => {
 
     const handleClearStorage = useCallback((): void => {
         form.clearStoredValues()
+        form.clearUrlHashValues()
         refreshSavedJson()
     }, [form, refreshSavedJson])
 
@@ -156,7 +158,7 @@ export const ControlledBindTab = () => {
                             className="danger-button"
                             onClick={handleClearStorage}
                         >
-                            Clear storage
+                            Clear storage and hash
                         </button>
                     </div>
                 </form>

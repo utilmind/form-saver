@@ -33,6 +33,8 @@ export type {
     FormSaverFieldName,
     FormSaverMeta,
     FormSaverPrimitive,
+    FormSaverUrlHashHistoryMode,
+    FormSaverUrlHashOptions,
     FormSaverValue,
     FormSaverValues,
     FormSaverValuesConstraint,

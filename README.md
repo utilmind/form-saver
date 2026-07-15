@@ -54,6 +54,7 @@ export function SettingsPage() {
   const form = useFormSaver<SettingsForm>({
     storageKey: "settings-form",
     initialValues,
+    urlHash: true,
   });
 
   return (
@@ -108,7 +109,7 @@ npm run demo:dev
 
 The old jQuery plugin remains under `jquery/`.
 
-It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization.
+It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization. The React package now also supports URL hash synchronization through `useFormSaver({ urlHash: true })`.
 
 See [`jquery/README.md`](./jquery/README.md) for legacy usage.
 

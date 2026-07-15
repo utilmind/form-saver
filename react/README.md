@@ -1,6 +1,6 @@
 # FormSaver React
 
-`form-saver-react` is a small React hook package for saving and restoring form/settings state from browser storage.
+`form-saver-react` is a small React hook package for saving and restoring form/settings state from browser storage, with optional readable URL hash synchronization.
 
 The package currently provides two public hook APIs and one wrapper component:
 
@@ -16,6 +16,7 @@ This package does **not** wrap the legacy jQuery plugin. It provides React/TypeS
 - Restore state after page reload.
 - Work in Next.js by avoiding browser storage access during SSR.
 - Support `localStorage` and `sessionStorage`.
+- Optionally mirror controlled form values into a readable URL hash.
 - Preserve unknown stored keys when multiple related forms share one `storageKey`.
 - Keep the public API small and typed.
 - Support a DOM auto-binding mode for ordinary native controls when fully controlled state is too verbose.
@@ -124,7 +125,8 @@ export function SettingsForm() {
         storageKey: 'settings-form',
         initialValues,
         debounceMs: 150,
-        mergeUnknownKeys: true
+        mergeUnknownKeys: true,
+        urlHash: true
     })
 
     return (
@@ -172,6 +174,64 @@ export function SettingsForm() {
 }
 ```
 
+## URL hash synchronization
+
+Set `urlHash: true` on `useFormSaver` to mirror the complete controlled value set after the `#` character:
+
+```tsx
+const form = useFormSaver<SettingsForm>({
+    storageKey: 'settings-form',
+    initialValues,
+    urlHash: true
+})
+```
+
+A state such as:
+
+```ts
+{
+    query: 'precision machining',
+    enabled: true,
+    mode: 'advanced',
+    tags: ['lathe', 'mill']
+}
+```
+
+is represented as readable hash parameters:
+
+```text
+#query=precision+machining&enabled=true&mode=advanced&tags=lathe&tags=mill
+```
+
+Primitive values use one `name=value` pair. Arrays use repeated parameters, and an empty array is retained as `tags=` so the field does not disappear from the URL.
+
+Restore order is deterministic:
+
+1. If the hash contains at least one known form field, the hash is the restore source and browser storage is ignored for that restore.
+2. Fields omitted from the hash keep their `initialValues` or binder defaults.
+3. If no known form field is present in the hash, FormSaver falls back to `localStorage` or `sessionStorage`.
+4. After restoration, FormSaver normalizes the hash so it contains the complete current controlled state.
+
+This avoids mixing a shared URL with stale values from the current browser. The hash is treated as belonging to this controlled form, so enabling this option replaces the existing hash content.
+
+Use the object form for one-way mirroring or explicit browser-history behavior:
+
+```tsx
+const form = useFormSaver<SettingsForm>({
+    storageKey: 'settings-form',
+    initialValues,
+    urlHash: {
+        restore: false,
+        historyMode: 'replace'
+    }
+})
+```
+
+- `restore` defaults to `true`. Set it to `false` to write values to the hash without restoring from it.
+- `historyMode` defaults to `'replace'`, which avoids adding a browser-history entry for every saved change. Use `'push'` only when each synchronized state should become a separate history entry.
+- `clearUrlHashValues()` removes the synchronized hash without changing React state or browser storage.
+
+Runtime type restoration uses `initialValues` and defaults registered by `bind.*`, because TypeScript types do not exist at runtime. Passing `initialValues` is recommended when URL synchronization includes numbers, booleans, or arrays.
 
 ## Controlled vs uncontrolled controls
 
@@ -463,7 +523,7 @@ npm run demo:build
 npm run demo:preview
 ```
 
-The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. The active tab is also reflected in the `demo` URL query parameter, so these links open a specific tab directly:
+The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. The controlled-bind tab enables `urlHash: true`, so every setting is visible and shareable in the browser address bar. The active tab is also reflected in the `demo` URL query parameter, so these links open a specific tab directly:
 
 - `http://localhost:5173/?demo=controlled-bind`
 - `http://localhost:5173/?demo=dom-hook`
@@ -486,6 +546,7 @@ useFormSaver<TValues>({
     version,
     mergeUnknownKeys: true,
     restoreUnknownKeys: false,
+    urlHash: false,
     mapBeforeSave,
     mapAfterLoad,
     onRestore,
@@ -499,7 +560,7 @@ useFormSaver<TValues>({
 | Option               | Default          | Description                                                                                                                                                                                                 |
 | -------------------- | ---------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `storageKey`         | required         | Key used in browser storage.                                                                                                                                                                                |
-| `initialValues`      | `{}`             | Optional initial controlled state for the form. Recommended when you read `values` directly or need non-empty defaults. Bind helpers can infer simple defaults when it is omitted.                         |
+| `initialValues`      | `{}`             | Optional initial controlled state for the form. Recommended when you read `values` directly or need non-empty defaults. Bind helpers can infer simple defaults when it is omitted.                          |
 | `storage`            | `'localStorage'` | Use `'localStorage'` or `'sessionStorage'`.                                                                                                                                                                 |
 | `enabled`            | `true`           | Disable restore/save behavior when set to `false`.                                                                                                                                                          |
 | `debounceMs`         | `150`            | Delay before saving after a state change. Use `0` to save immediately.                                                                                                                                      |
@@ -507,12 +568,12 @@ useFormSaver<TValues>({
 | `version`            | `undefined`      | Optional storage format/application version saved in metadata.                                                                                                                                              |
 | `mergeUnknownKeys`   | `true`           | Preserve stored fields that are not present in the current form state.                                                                                                                                      |
 | `restoreUnknownKeys` | `false`          | Include unknown stored fields in React state. Usually keep this `false`.                                                                                                                                    |
+| `urlHash`            | `false`          | Set to `true` to restore from and mirror all controlled values into readable URL hash parameters. The object form supports `restore` and `historyMode`.                                                     |
 | `mapBeforeSave`      | `undefined`      | Transform values before writing them to storage.                                                                                                                                                            |
 | `mapAfterLoad`       | `undefined`      | Transform or reject values after loading them from storage.                                                                                                                                                 |
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |
 | `onSave`             | `undefined`      | Called after values were saved.                                                                                                                                                                             |
 | `onError`            | `undefined`      | Called when restore/save transforms or callbacks throw. Storage access failures are ignored by the storage helpers.                                                                                         |
-
 
 When `initialValues` is omitted, `useFormSaver` learns field names from bind helpers during render and uses simple defaults: `''` for text-like fields, `false` for checkboxes, `[]` for multi-selects, and no selected radio value. This is convenient for simple bind-only forms.
 
@@ -543,6 +604,7 @@ Use `getString(name)` for text-like fields, `getBoolean(name)` for checkbox-like
   replaceValues,
   resetValues,
   clearStoredValues,
+  clearUrlHashValues,
   saveNow,
   getValue,
   getString,

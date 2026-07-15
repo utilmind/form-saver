@@ -89,11 +89,16 @@ const ControlledDemoWithoutInitialValues = () => {
     )
 }
 
-const ControlledDemo = () => {
+interface ControlledDemoProps {
+    urlHash?: boolean
+}
+
+const ControlledDemo = ({ urlHash = false }: ControlledDemoProps) => {
     const formSaver = useFormSaver<SettingsFormValues>({
         storageKey: STORAGE_KEY,
         initialValues: INITIAL_VALUES,
-        debounceMs: 0
+        debounceMs: 0,
+        urlHash
     })
 
     return (
@@ -132,6 +137,7 @@ const ControlledDemo = () => {
 
 beforeEach(() => {
     installTestBrowserStorage()
+    window.history.replaceState(null, '', '/')
 })
 
 afterEach(() => {
@@ -226,6 +232,66 @@ describe('useFormSaver', () => {
             expect(readStoredForm<SettingsFormValues>(STORAGE_KEY)?.values.title).toBe(
                 'Default title'
             )
+        })
+    })
+
+    it('restores URL hash values before localStorage and persists the selected source', async () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Storage title',
+            enabled: false,
+            mode: 'fast',
+            tags: [],
+            notes: 'Storage notes'
+        })
+        window.history.replaceState(
+            null,
+            '',
+            '/#title=Hash+title&enabled=true&mode=accurate&tags=a&tags=b&notes=Hash+notes'
+        )
+
+        const { container } = render(<ControlledDemo urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Hash title')
+        })
+
+        expect(getInput(container, 'enabled').checked).toBe(true)
+        expect(getSelect(container, 'tags').selectedOptions).toHaveLength(2)
+        expect(getTextarea(container, 'notes').value).toBe('Hash notes')
+
+        await waitFor(() => {
+            expect(readStoredForm<SettingsFormValues>(STORAGE_KEY)?.values.title).toBe('Hash title')
+        })
+    })
+
+    it('mirrors restored and changed controlled values into the URL hash', async () => {
+        writeStoredForm<SettingsFormValues>(STORAGE_KEY, {
+            title: 'Restored title',
+            enabled: true,
+            mode: 'accurate',
+            tags: ['a'],
+            notes: 'Restored notes'
+        })
+
+        const { container } = render(<ControlledDemo urlHash />)
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Restored title'
+            )
+        })
+
+        fireEvent.change(getInput(container, 'title'), { target: { value: 'Changed for link' } })
+        const tags = getSelect(container, 'tags')
+        tags.options[0].selected = true
+        tags.options[1].selected = true
+        fireEvent.change(tags)
+
+        await waitFor(() => {
+            const params = new URLSearchParams(window.location.hash.slice(1))
+
+            expect(params.get('title')).toBe('Changed for link')
+            expect(params.getAll('tags')).toEqual(['a', 'b'])
         })
     })
 
