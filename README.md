@@ -55,6 +55,8 @@ export function SettingsPage() {
   const form = useFormSaver<SettingsForm>({
     storageKey: "settings-form",
     initialValues,
+    saveEvent: 'change',
+    autosaveIntervalSeconds: 30,
     urlHash: true,
   });
 
@@ -73,7 +75,7 @@ export function SettingsPage() {
 
 See [`react/README.md`](./react/README.md) for the React package API draft.
 
-The React storage format is intentionally independent from the legacy jQuery plugin storage format.
+The React storage format is intentionally independent from the legacy jQuery plugin storage format. Controlled text binders and DOM scopes save on blur/change by default, with a 30-second focused-control autosave fallback. Set `saveEvent: 'input'` to opt into save-while-typing behavior.
 
 React package checks:
 

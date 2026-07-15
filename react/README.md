@@ -125,6 +125,8 @@ export function SettingsForm() {
         storageKey: 'settings-form',
         initialValues,
         debounceMs: 150,
+        saveEvent: 'change',
+        autosaveIntervalSeconds: 30,
         mergeUnknownKeys: true,
         urlHash: true
     })
@@ -248,7 +250,7 @@ Text hash values preserve case and explicit empty strings. Numeric and boolean v
 
 Both React APIs install a `beforeunload` flush. This covers F5 or another immediate page unload that occurs before the normal debounce or DOM `change` event has saved the latest focused field.
 
-For DOM mode with the default `saveEvent: 'change'`, typing into a text control does not save until editing is committed, commonly on blur. FormSaver still marks the form dirty on the native `input` event and performs a synchronous save during `beforeunload`. Controlled `useFormSaver` binders receive React `onChange` updates while typing, but the same unload flush protects changes that are still inside the configured debounce window.
+With the default `saveEvent: 'change'`, typing into a text input or textarea does not write browser storage or the URL hash on every keypress. Controlled binders still update React state immediately, but persist on blur. DOM mode follows the native browser `change` event, which also commonly fires on blur for text controls. Both APIs still mark the form dirty while typing and perform a synchronous save during `beforeunload`.
 
 Some browsers can persist the storage write but reload the previous address-bar hash. FormSaver stores a small per-`storageKey` marker in `sessionStorage` containing the focused field name and the exact save timestamp. On the next initialization it uses storage only when that one field is the sole mismatch. This is automatic when `urlHash` is enabled; applications do not need their own unload handler.
 
@@ -410,7 +412,11 @@ export function SettingsForm() {
 
 By default, DOM mode saves on browser `change` events. For text inputs and textareas this usually means "after editing is committed", commonly when the field loses focus. Checkboxes, radio buttons, and selects fire `change` immediately. Native `input` events still mark the form dirty, so if the user leaves or reloads before blur, FormSaver synchronously flushes the current DOM values on `beforeunload`. When URL hash synchronization is enabled, the focused-field reload recovery described above prevents an older hash from undoing that save.
 
-Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In that mode, `debounceMs` controls the delay before writing to storage. The default debounce value is exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS` and is currently `150`.
+Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In that mode, `debounceMs` controls the delay before writing to storage. The default is `saveEvent: 'change'` for both controlled binders and DOM scopes.
+
+Both APIs also use `autosaveIntervalSeconds: 30` by default. After the first unsaved edit in a focused text input or textarea, FormSaver starts one timer. Continued typing does not restart that timer. If the control is still focused and its value is still dirty when the interval expires, FormSaver saves the current values and updates the hash. A successful normal save cancels the timer; a later edit starts a new interval. Set `autosaveIntervalSeconds: 0` to disable this periodic focused-control autosave.
+
+The defaults are exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`, `DEFAULT_FORM_SAVER_SAVE_EVENT`, and `DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS`.
 
 `useFormSaverDom` scans this selector inside the scoped root:
 
@@ -575,6 +581,8 @@ useFormSaver<TValues>({
     storage: 'localStorage',
     enabled: true,
     debounceMs: 150,
+    saveEvent: 'change',
+    autosaveIntervalSeconds: 30,
     saveOnMount: false,
     version,
     mergeUnknownKeys: true,
@@ -596,7 +604,9 @@ useFormSaver<TValues>({
 | `initialValues`      | `{}`             | Optional initial controlled state for the form. Recommended when you read `values` directly or need non-empty defaults. Bind helpers can infer simple defaults when it is omitted.                          |
 | `storage`            | `'localStorage'` | Use `'localStorage'` or `'sessionStorage'`.                                                                                                                                                                 |
 | `enabled`            | `true`           | Disable restore/save behavior when set to `false`.                                                                                                                                                          |
-| `debounceMs`         | `150`            | Delay before saving after a state change. Use `0` to save immediately.                                                                                                                                      |
+| `debounceMs`         | `150`            | Delay after save-triggering changes such as `saveEvent: 'input'` or non-text control changes. Use `0` to save immediately.                                                                                   |
+| `saveEvent`          | `'change'`       | Controlled text and textarea binders save on blur by default. Set to `'input'` to persist while typing. Checkbox, radio, select, and explicit setter operations remain save-triggering changes.             |
+| `autosaveIntervalSeconds` | `30`       | Periodically save a dirty focused text control without writing on every keypress. The timer is not restarted by continued typing. Set `0` to disable.                                                       |
 | `saveOnMount`        | `false`          | When `false`, the hook does not write `initialValues` to storage immediately after the first restore cycle. Set to `true` if you want storage to be created on mount even before the user changes anything. |
 | `version`            | `undefined`      | Optional storage format/application version saved in metadata.                                                                                                                                              |
 | `mergeUnknownKeys`   | `true`           | Preserve stored fields that are not present in the current form state.                                                                                                                                      |
@@ -675,7 +685,7 @@ The hook includes convenience binders for common controlled fields:
 - `bind.select(name)`
 - `bind.multiSelect(name)`
 
-You can ignore these helpers and wire controls manually with `values`, `setValue`, and `setValues`.
+You can ignore these helpers and wire controls manually with `values`, `setValue`, and `setValues`. The `saveEvent` blur/input distinction applies to `bind.text()` and `bind.textarea()`, because those helpers own the corresponding DOM events. Explicit `setValue`, `setValues`, and `replaceValues` calls are treated as committed programmatic changes and schedule persistence.
 
 ### `useFormSaverDom(options)`
 
@@ -686,6 +696,7 @@ useFormSaverDom({
     enabled: true,
     debounceMs: 150,
     saveEvent: 'change',
+    autosaveIntervalSeconds: 30,
     restoreOnMount: true,
     urlHash: false,
     version,

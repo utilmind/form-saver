@@ -12,10 +12,10 @@
  *   storage.ts.
  */
 
-import type { ChangeEventHandler, RefCallback } from 'react'
+import type { ChangeEventHandler, FocusEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
-export type FormSaverDomSaveEvent = 'change' | 'input'
+export type FormSaverSaveEvent = 'change' | 'input'
 export type FormSaverUrlHashHistoryMode = 'replace' | 'push'
 
 export type FormSaverPrimitive = string | number | boolean | null
@@ -67,6 +67,8 @@ export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<T
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
+    saveEvent?: FormSaverSaveEvent
+    autosaveIntervalSeconds?: number
     saveOnMount?: boolean
     version?: string | number
     mergeUnknownKeys?: boolean
@@ -87,7 +89,8 @@ export interface UseFormSaverDomOptions {
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
-    saveEvent?: FormSaverDomSaveEvent
+    saveEvent?: FormSaverSaveEvent
+    autosaveIntervalSeconds?: number
     restoreOnMount?: boolean
     urlHash?: boolean | FormSaverUrlHashOptions
     version?: string | number
@@ -126,6 +129,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         value: string
         onChange: ChangeEventHandler<HTMLInputElement>
+        onBlur: FocusEventHandler<HTMLInputElement>
     }
 
     textarea: <K extends FormSaverFieldName<TValues>>(
@@ -134,6 +138,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         value: string
         onChange: ChangeEventHandler<HTMLTextAreaElement>
+        onBlur: FocusEventHandler<HTMLTextAreaElement>
     }
 
     checkbox: <K extends FormSaverFieldName<TValues>>(

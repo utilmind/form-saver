@@ -89,7 +89,8 @@ export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
             <div className="status-row">
                 <span>
                     This tab uses <code>{'<FormSaverScope asChild>'}</code>. The component clones
-                    the form and attaches its ref without creating an extra DOM element.
+                    the form and attaches its ref without creating an extra DOM element. Text edits
+                    save on blur or after 30 seconds while focused.
                 </span>
             </div>
             <section className="layout-grid">

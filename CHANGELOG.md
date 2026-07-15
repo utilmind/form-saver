@@ -6,6 +6,9 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- Added shared `saveEvent: 'change' | 'input'` behavior to controlled binders and DOM scopes. Text inputs and textareas now save on blur/change by default instead of persisting every keypress.
+- Added `autosaveIntervalSeconds`, defaulting to 30 seconds, to periodically save a dirty focused text control without resetting the timer on every keypress. Set it to `0` to disable periodic autosave.
+- Added exported defaults for debounce, save event, and focused-control autosave interval.
 - Added optional readable URL hash synchronization to the controlled `useFormSaver` API through `urlHash: true`.
 - Added deterministic restore priority where a recognized URL hash overrides browser storage without mixing stale local values.
 - Added readable repeated hash parameters for array values and runtime type restoration based on `initialValues` or binder defaults.
@@ -19,6 +22,8 @@ All notable changes to this project will be documented in this file.
 
 ### Changed
 
+- Avoided duplicate browser-storage writes when the prepared values are identical to the values already stored.
+- Updated the demo to use the lightweight default change/blur persistence mode instead of forcing DOM save-on-input.
 - Reused one prepared value set for browser storage and URL hash persistence so `mapBeforeSave` runs only once per save.
 - Changed the demo navigation to use clean destination URLs and rely on FormSaver initialization, rather than demo-specific localStorage-to-hash serialization.
 - Preserved merged values from shared storage keys when multiple FormSaver scopes synchronize one hash.

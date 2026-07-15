@@ -38,7 +38,7 @@ export const ControlledBindTab = ({ registerSave }: ControlledBindTabProps) => {
             return 'Restoring saved controlled values...'
         }
 
-        return 'Ready. Controlled values are synchronized with localStorage and the URL hash.'
+        return 'Ready. Text fields save on blur or after 30 seconds while focused; other controls save on change.'
     }, [form.hasRestored])
 
     const handleResultsPerPageChange = useCallback(

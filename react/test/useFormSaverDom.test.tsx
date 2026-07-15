@@ -8,7 +8,7 @@
 
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
@@ -42,20 +42,23 @@ const DomDemo = ({
     saveEvent = 'change',
     debounceMs = 0,
     urlHash = false,
-    onSave
+    onSave,
+    autosaveIntervalSeconds
 }: {
     storageKey?: string
     saveEvent?: 'change' | 'input'
     debounceMs?: number
     urlHash?: boolean
     onSave?: () => void
+    autosaveIntervalSeconds?: number
 }) => {
     const formSaver = useFormSaverDom<HTMLFormElement>({
         storageKey,
         saveEvent,
         debounceMs,
         urlHash,
-        onSave
+        onSave,
+        autosaveIntervalSeconds
     })
 
     return (
@@ -93,6 +96,7 @@ beforeEach(() => {
 
 afterEach(() => {
     cleanup()
+    vi.useRealTimers()
 })
 describe('useFormSaverDom', () => {
     it('restores stored values after mount', async () => {
@@ -168,6 +172,32 @@ describe('useFormSaverDom', () => {
             expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Changed title')
         })
         expect(onSave).toHaveBeenCalled()
+    })
+
+    it('autosaves a dirty focused DOM text control once per configured interval', () => {
+        vi.useFakeTimers()
+        const onSave = vi.fn()
+        const { container } = render(<DomDemo autosaveIntervalSeconds={30} onSave={onSave} />)
+        const title = getInput(container, 'title')
+
+        title.focus()
+        fireEvent.input(title, { target: { value: 'Long DOM edit' } })
+
+        act(() => {
+            vi.advanceTimersByTime(29_999)
+        })
+        expect(readStoredForm(STORAGE_KEY)).toBeNull()
+
+        act(() => {
+            vi.advanceTimersByTime(1)
+        })
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Long DOM edit')
+        expect(onSave).toHaveBeenCalledTimes(1)
+
+        act(() => {
+            vi.advanceTimersByTime(30_000)
+        })
+        expect(onSave).toHaveBeenCalledTimes(1)
     })
 
     it('flushes unsaved input changes on beforeunload', async () => {

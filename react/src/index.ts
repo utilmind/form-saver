@@ -7,6 +7,11 @@
  * remains available internally.
  */
 
+export {
+    DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
+    DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+    DEFAULT_FORM_SAVER_SAVE_EVENT
+} from './defaults'
 export type { DomControlOptions } from './domControls'
 export type { FormSaverScopeProps } from './FormSaverScope'
 export { FormSaverScope } from './FormSaverScope'
@@ -31,10 +36,10 @@ export { restoreUrlHashFromStorage } from './urlHash'
 //
 export type {
     BrowserStorageName,
-    FormSaverDomSaveEvent,
     FormSaverFieldName,
     FormSaverMeta,
     FormSaverPrimitive,
+    FormSaverSaveEvent,
     FormSaverUrlHashHistoryMode,
     FormSaverUrlHashOptions,
     FormSaverValue,

@@ -25,7 +25,6 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
     const domForm = useFormSaverDom<HTMLFormElement>({
         storageKey,
         debounceMs: 150,
-        saveEvent: 'input',
         mergeUnknownKeys: true,
         urlHash: true,
         onRestore: refreshSavedJson,
@@ -77,7 +76,8 @@ export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
             <div className="status-row">
                 <span>
                     This tab uses <code>useFormSaverDom</code>. Standard named controls are captured
-                    automatically; the custom add-on is saved with bind helpers.
+                    automatically. Text fields use change/blur plus the 30-second focused autosave;
+                    the custom add-on uses bind helpers.
                 </span>
             </div>
             <section className="layout-grid">

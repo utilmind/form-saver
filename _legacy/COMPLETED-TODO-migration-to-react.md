@@ -52,7 +52,8 @@ The new React implementation lives in `react/`.
 - [x] Avoid writing initial default values to storage on first mount unless `saveOnMount` is enabled.
 - [x] Fix the demo restore loop caused by non-memoized callback options.
 - [x] Review the hook API against a typical Next.js settings form.
-- [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; controlled state uses it after React state changes, while DOM mode defaults to browser `change` events and uses debounce only after a save-triggering event.
+- [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; both APIs default to `saveEvent: 'change'`, while `'input'` remains an explicit save-while-typing mode.
+- [x] Add focused-control periodic autosave. Decision: `autosaveIntervalSeconds` defaults to 30 seconds, does not restart on every keypress, saves only dirty focused text controls, and accepts `0` to disable.
 - [x] Make `initialValues` optional for simple bind-only controlled forms; bind helpers infer simple defaults while explicit `initialValues` remains recommended for direct `values` usage and non-empty defaults.
 - [x] Add safe value helpers (`getString`, `getBoolean`, `getArray`, `getValue`) for components that omit `initialValues` but still need to read values in render logic.
 
