@@ -27,43 +27,34 @@ const getHashSearchParams = (hash: string): URLSearchParams =>
 const serializePrimitive = (value: FormSaverPrimitive): string =>
     value === null ? 'null' : String(value)
 
-const parseBoolean = (value: string): boolean | undefined => {
-    const normalized = value.toLowerCase()
-
-    if (normalized === 'true' || normalized === '1') {
-        return true
-    }
-
-    if (normalized === 'false' || normalized === '0') {
-        return false
-    }
-
-    return undefined
-}
-
-const parseNumber = (value: string): number | undefined => {
-    if (!value.trim()) {
-        return undefined
-    }
-
-    const parsed = Number(value)
-    return Number.isFinite(parsed) ? parsed : undefined
-}
-
 const parsePrimitiveByTemplate = (
     value: string,
     templateValue: FormSaverPrimitive | undefined
 ): FormSaverPrimitive | undefined => {
-    if (typeof templateValue === 'boolean') {
-        return parseBoolean(value)
-    }
-
-    if (typeof templateValue === 'number') {
-        return parseNumber(value)
+    value = value.trim()
+    if (!value) {
+        return undefined
     }
 
     if (templateValue === null) {
         return value === 'null' ? null : value
+    }
+
+    if (typeof templateValue === 'number') {
+        // parse Number
+        const parsed = Number(value)
+        return Number.isFinite(parsed) ? parsed : undefined
+    }
+
+    value = value.toLowerCase()
+    if (typeof templateValue === 'boolean') {
+        // parse Boolean
+        if (!value || value === '0' || value === 'off') {
+            return false
+        }
+
+        value = value[0]
+        return value !== 'f' && value !== 'n'
     }
 
     return value
