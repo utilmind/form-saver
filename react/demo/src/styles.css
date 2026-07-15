@@ -299,3 +299,44 @@ h1 {
         grid-template-columns: 1fr;
     }
 }
+
+.site-shell {
+    display: grid;
+    grid-template-rows: minmax(0, 1fr) auto;
+    min-height: 100vh;
+}
+
+.about-page {
+    display: grid;
+    place-items: center;
+    min-height: 100%;
+    padding: 2rem;
+    text-align: center;
+}
+
+.about-content {
+    font-size: 1.1rem;
+    line-height: 1.6;
+}
+
+.about-content p {
+    margin: 0 0 1rem;
+}
+
+.about-content p:last-child {
+    margin-bottom: 0;
+}
+
+.site-navigation {
+    display: flex;
+    justify-content: center;
+    gap: 0.55rem;
+    padding: 1.25rem 1rem 1.5rem;
+    color: #6c7589;
+}
+
+.site-navigation a[aria-current='page'] {
+    color: #172033;
+    font-weight: 700;
+    text-decoration: none;
+}

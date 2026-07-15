@@ -13,10 +13,14 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { AppLink } from './app-link'
 import {
     DEFAULT_DEMO_TAB,
+    type DemoPage,
     ensureDemoTabHash,
+    readDemoPageFromLocation,
     readDemoTabFromLocation,
+    writeAboutPageToLocation,
     writeDemoTabToLocation
 } from './demo-location'
 import { type DemoTab, type RegisterDemoTabSave } from './demo-shared'
@@ -42,18 +46,100 @@ const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     }
 ]
 
-export const App = () => {
-    const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
-    const saveActiveTabRef = useRef<(() => void) | null>(null)
+interface DemoContentProps {
+    activeTab: DemoTab
+    onSelectTab: (tab: DemoTab) => void
+    registerActiveTabSave: RegisterDemoTabSave
+}
+
+const DemoContent = ({ activeTab, onSelectTab, registerActiveTabSave }: DemoContentProps) => {
     const activeDescription = demoTabs.find((tab) => tab.id === activeTab)?.description
 
+    return (
+        <main className="app-shell">
+            <section className="hero-card">
+                <p className="eyebrow">FormSaver React Demo</p>
+                <h1>Persist form settings in localStorage</h1>
+                <p className="hero-text">
+                    This Vite demo shows the three public React usage styles: controlled bind
+                    helpers, DOM auto-binding through a hook, and the lightweight scope component.
+                </p>
+            </section>
+
+            <nav className="tab-list" aria-label="FormSaver demo modes">
+                {demoTabs.map((tab) => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        className={tab.id === activeTab ? 'tab-button is-active' : 'tab-button'}
+                        aria-current={tab.id === activeTab ? 'page' : undefined}
+                        onClick={() => {
+                            onSelectTab(tab.id)
+                        }}
+                    >
+                        <span>{tab.label}</span>
+                        <small>{tab.description}</small>
+                    </button>
+                ))}
+            </nav>
+
+            {activeDescription && <p className="tab-summary">{activeDescription}</p>}
+
+            {activeTab === DEFAULT_DEMO_TAB && (
+                <ControlledBindTab registerSave={registerActiveTabSave} />
+            )}
+            {activeTab === 'dom-hook' && <DomHookTab registerSave={registerActiveTabSave} />}
+            {activeTab === 'scope-component' && (
+                <ScopeComponentTab registerSave={registerActiveTabSave} />
+            )}
+        </main>
+    )
+}
+
+interface AboutContentProps {
+    onViewDemo: () => void
+}
+
+const AboutContent = ({ onViewDemo }: AboutContentProps) => (
+    <main className="about-page">
+        <div className="about-content">
+            <p>
+                FormSaver, React hook package
+                <br />
+                (c) 2008-2026,{' '}
+                <a href="https://github.com/utilmind/form-saver/" target="_blank" rel="noreferrer">
+                    utilmind
+                </a>
+            </p>
+
+            <p>
+                <AppLink href="/" onNavigate={onViewDemo}>
+                    View demo
+                </AppLink>
+            </p>
+        </div>
+    </main>
+)
+
+export const App = () => {
+    const [page, setPage] = useState<DemoPage>(() => readDemoPageFromLocation())
+    const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
+    const saveActiveTabRef = useRef<(() => void) | null>(null)
+
     useEffect(() => {
-        ensureDemoTabHash(activeTab)
-    }, [activeTab])
+        if (page === 'demo') {
+            ensureDemoTabHash(activeTab)
+        }
+    }, [activeTab, page])
 
     useEffect(() => {
         const handlePopState = (): void => {
-            setActiveTab(readDemoTabFromLocation())
+            const nextPage = readDemoPageFromLocation()
+
+            setPage(nextPage)
+            if (nextPage === 'demo') {
+                setActiveTab(readDemoTabFromLocation())
+            }
         }
 
         window.addEventListener('popstate', handlePopState)
@@ -81,43 +167,55 @@ export const App = () => {
         [activeTab]
     )
 
+    const handleViewAbout = useCallback((): void => {
+        if (page === 'about') {
+            return
+        }
+
+        // Persist the current form before removing its settings from the URL.
+        saveActiveTabRef.current?.()
+        writeAboutPageToLocation()
+        setPage('about')
+    }, [page])
+
+    const handleViewDemo = useCallback((): void => {
+        if (page === 'demo') {
+            return
+        }
+
+        writeDemoTabToLocation(activeTab)
+        setPage('demo')
+    }, [activeTab, page])
+
     return (
-        <main className="app-shell">
-            <section className="hero-card">
-                <p className="eyebrow">FormSaver React Demo</p>
-                <h1>Persist form settings in localStorage</h1>
-                <p className="hero-text">
-                    This Vite demo shows the three public React usage styles: controlled bind
-                    helpers, DOM auto-binding through a hook, and the lightweight scope component.
-                </p>
-            </section>
-
-            <nav className="tab-list" aria-label="FormSaver demo modes">
-                {demoTabs.map((tab) => (
-                    <button
-                        key={tab.id}
-                        type="button"
-                        className={tab.id === activeTab ? 'tab-button is-active' : 'tab-button'}
-                        aria-current={tab.id === activeTab ? 'page' : undefined}
-                        onClick={() => {
-                            handleSelectTab(tab.id)
-                        }}
-                    >
-                        <span>{tab.label}</span>
-                        <small>{tab.description}</small>
-                    </button>
-                ))}
-            </nav>
-
-            {activeDescription && <p className="tab-summary">{activeDescription}</p>}
-
-            {activeTab === DEFAULT_DEMO_TAB && (
-                <ControlledBindTab registerSave={registerActiveTabSave} />
+        <div className="site-shell">
+            {page === 'demo' ? (
+                <DemoContent
+                    activeTab={activeTab}
+                    onSelectTab={handleSelectTab}
+                    registerActiveTabSave={registerActiveTabSave}
+                />
+            ) : (
+                <AboutContent onViewDemo={handleViewDemo} />
             )}
-            {activeTab === 'dom-hook' && <DomHookTab registerSave={registerActiveTabSave} />}
-            {activeTab === 'scope-component' && (
-                <ScopeComponentTab registerSave={registerActiveTabSave} />
-            )}
-        </main>
+
+            <footer className="site-navigation" aria-label="Demo pages">
+                <AppLink
+                    href="/"
+                    aria-current={page === 'demo' ? 'page' : undefined}
+                    onNavigate={handleViewDemo}
+                >
+                    Demo
+                </AppLink>
+                <span aria-hidden="true">|</span>
+                <AppLink
+                    href="/about/"
+                    aria-current={page === 'about' ? 'page' : undefined}
+                    onNavigate={handleViewAbout}
+                >
+                    About
+                </AppLink>
+            </footer>
+        </div>
     )
 }

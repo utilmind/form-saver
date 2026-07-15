@@ -11,7 +11,7 @@ import { writeStoredForm } from '../src/storage'
 
 const getHashParams = (): URLSearchParams => new URLSearchParams(window.location.hash.slice(1))
 
-describe('demo tab URL synchronization', () => {
+describe('demo URL synchronization', () => {
     afterEach(() => {
         cleanup()
     })
@@ -39,6 +39,7 @@ describe('demo tab URL synchronization', () => {
 
         const params = getHashParams()
 
+        expect(window.location.pathname).toBe('/')
         expect(window.location.search).toBe('?demo=dom-hook')
         expect(params.get('projectName')).toBe('DOM project')
         expect(params.get('emailNotifications')).toBe('true')
@@ -59,5 +60,26 @@ describe('demo tab URL synchronization', () => {
 
         expect(getHashParams().get('projectName')).toBe('Unsaved project')
         expect(screen.getByLabelText('Project name').value).toBe('Unsaved project')
+    })
+
+    it('hides the demo hash on About and restores it when returning to Demo', () => {
+        render(<App />)
+        fireEvent.change(screen.getByLabelText('Search query'), {
+            target: { value: 'Restored from storage' }
+        })
+
+        fireEvent.click(screen.getByRole('link', { name: 'About' }))
+
+        expect(window.location.pathname).toBe('/about/')
+        expect(window.location.search).toBe('')
+        expect(window.location.hash).toBe('')
+        expect(screen.getByText(/FormSaver, React hook package/)).toBeTruthy()
+
+        fireEvent.click(screen.getByRole('link', { name: 'View demo' }))
+
+        expect(window.location.pathname).toBe('/')
+        expect(window.location.search).toBe('?demo=controlled-bind')
+        expect(getHashParams().get('searchQuery')).toBe('Restored from storage')
+        expect(screen.getByLabelText('Search query').value).toBe('Restored from storage')
     })
 })
