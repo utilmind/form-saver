@@ -105,7 +105,7 @@ const AboutContent = ({ onViewDemo }: AboutContentProps) => (
             <p>
                 <strong>FormSaver</strong>, React hook package
                 <br />
-                (c) 2008-2026,{' '}
+                (c) 2008–2026,{' '}
                 <a
                     href="https://github.com/utilmind/form-saver/"
                     className="outlink"
