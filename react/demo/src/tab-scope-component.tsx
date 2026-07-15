@@ -1,6 +1,7 @@
 import {
     collectDomFormValues,
     FormSaverScope,
+    type FormSaverValues,
     removeStoredForm,
     useFormSaver,
     writeStoredForm
@@ -12,15 +13,22 @@ import {
     type CustomAddonSettings,
     DebugPanel,
     initialCustomAddon,
+    type RegisterDemoTabSave,
     renderNativeSettingsControls,
     STORAGE_KEYS,
+    useRegisterDemoTabSave,
     useStorageDebug
 } from './demo-shared'
 
-export const ScopeComponentTab = () => {
+interface ScopeComponentTabProps {
+    registerSave: RegisterDemoTabSave
+}
+
+export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
     const storageKey = STORAGE_KEYS['scope-component']
     const formRef = useRef<HTMLFormElement | null>(null)
-    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+    const { savedJson, refreshSavedJson, handleFormSaved } =
+        useStorageDebug<FormSaverValues>(storageKey)
 
     const customForm = useFormSaver<CustomAddonSettings>({
         storageKey,
@@ -28,7 +36,7 @@ export const ScopeComponentTab = () => {
         debounceMs: 150,
         mergeUnknownKeys: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver scope custom bind error:', error)
         }
@@ -72,6 +80,8 @@ export const ScopeComponentTab = () => {
         refreshSavedJson()
     }, [customForm, refreshSavedJson, storageKey])
 
+    useRegisterDemoTabSave(registerSave, handleSaveNow)
+
     return (
         <section className="tab-content">
             <div className="status-row">
@@ -86,7 +96,7 @@ export const ScopeComponentTab = () => {
                     storageKey={storageKey}
                     mergeUnknownKeys
                     onRestore={refreshSavedJson}
-                    onSave={refreshSavedJson}
+                    onSave={handleFormSaved}
                     onError={(error: unknown): void => {
                         console.error('FormSaverScope demo error:', error)
                     }}

@@ -1,5 +1,7 @@
-import type { useFormSaver } from 'form-saver-react'
+import type { FormSaverValues, FormSaverValuesConstraint, useFormSaver } from 'form-saver-react'
 import { useCallback, useEffect, useState } from 'react'
+
+import { writeFormValuesToUrlHash } from '../../src/urlHash'
 
 export type DemoTab = 'controlled-bind' | 'dom-hook' | 'scope-component'
 export type DemoMode = 'basic' | 'advanced' | 'expert'
@@ -16,10 +18,22 @@ export interface DemoSettings {
     notes: string
 }
 
+export interface NativeDemoSettings {
+    projectName: string
+    emailNotifications: boolean
+    mode: DemoMode
+    density: DemoDensity
+    features: string[]
+    tags: string[]
+    notes: string
+}
+
 export interface CustomAddonSettings {
     customReviewed: boolean
     customReviewLevel: CustomReviewLevel
 }
+
+export type RegisterDemoTabSave = (saveNow: (() => void) | null) => void
 
 export const STORAGE_KEYS: Record<DemoTab, string> = {
     'controlled-bind': 'form-saver-demo-controlled',
@@ -37,9 +51,25 @@ export const initialSettings: DemoSettings = {
     notes: ''
 }
 
+export const initialNativeSettings: NativeDemoSettings = {
+    projectName: '',
+    emailNotifications: false,
+    mode: 'basic',
+    density: 'comfortable',
+    features: [],
+    tags: [],
+    notes: ''
+}
+
 export const initialCustomAddon: CustomAddonSettings = {
     customReviewed: false,
     customReviewLevel: 'quick'
+}
+
+export const INITIAL_VALUES_BY_TAB: Record<DemoTab, FormSaverValues> = {
+    'controlled-bind': { ...initialSettings },
+    'dom-hook': { ...initialNativeSettings, ...initialCustomAddon },
+    'scope-component': { ...initialNativeSettings, ...initialCustomAddon }
 }
 
 const readSavedJson = (storageKey: string): string => {
@@ -67,12 +97,22 @@ const readSavedJson = (storageKey: string): string => {
 const formatTimestamp = (timestamp: number | undefined): string =>
     timestamp ? new Date(timestamp).toLocaleString() : 'never'
 
-export const useStorageDebug = (storageKey: string) => {
+export const useStorageDebug = <TValues extends FormSaverValuesConstraint<TValues>>(
+    storageKey: string
+) => {
     const [savedJson, setSavedJson] = useState<string>('Loading...')
 
     const refreshSavedJson = useCallback((): void => {
         setSavedJson(readSavedJson(storageKey))
     }, [storageKey])
+
+    const handleFormSaved = useCallback(
+        (values: Partial<TValues>): void => {
+            refreshSavedJson()
+            writeFormValuesToUrlHash<TValues>(values)
+        },
+        [refreshSavedJson]
+    )
 
     useEffect(() => {
         refreshSavedJson()
@@ -80,8 +120,22 @@ export const useStorageDebug = (storageKey: string) => {
 
     return {
         savedJson,
-        refreshSavedJson
+        refreshSavedJson,
+        handleFormSaved
     }
+}
+
+export const useRegisterDemoTabSave = (
+    registerSave: RegisterDemoTabSave,
+    saveNow: () => void
+): void => {
+    useEffect(() => {
+        registerSave(saveNow)
+
+        return () => {
+            registerSave(null)
+        }
+    }, [registerSave, saveNow])
 }
 
 interface DebugPanelProps {
@@ -183,13 +237,17 @@ export const renderNativeSettingsControls = (idPrefix: string) => (
                 name="projectName"
                 type="text"
                 placeholder="Type and reload the page..."
-                defaultValue=""
+                defaultValue={initialNativeSettings.projectName}
             />
         </div>
 
         <div className="form-row checkbox-row">
             <label>
-                <input type="checkbox" name="emailNotifications" defaultChecked={false} />
+                <input
+                    type="checkbox"
+                    name="emailNotifications"
+                    defaultChecked={initialNativeSettings.emailNotifications}
+                />
                 Enable email notifications
             </label>
         </div>
@@ -197,22 +255,41 @@ export const renderNativeSettingsControls = (idPrefix: string) => (
         <fieldset className="form-row radio-group">
             <legend>Mode</legend>
             <label>
-                <input type="radio" name="mode" value="basic" defaultChecked />
+                <input
+                    type="radio"
+                    name="mode"
+                    value="basic"
+                    defaultChecked={initialNativeSettings.mode === 'basic'}
+                />
                 Basic
             </label>
             <label>
-                <input type="radio" name="mode" value="advanced" />
+                <input
+                    type="radio"
+                    name="mode"
+                    value="advanced"
+                    defaultChecked={initialNativeSettings.mode === 'advanced'}
+                />
                 Advanced
             </label>
             <label>
-                <input type="radio" name="mode" value="expert" />
+                <input
+                    type="radio"
+                    name="mode"
+                    value="expert"
+                    defaultChecked={initialNativeSettings.mode === 'expert'}
+                />
                 Expert
             </label>
         </fieldset>
 
         <div className="form-row">
             <label htmlFor={`${idPrefix}-density`}>Density</label>
-            <select id={`${idPrefix}-density`} name="density" defaultValue="comfortable">
+            <select
+                id={`${idPrefix}-density`}
+                name="density"
+                defaultValue={initialNativeSettings.density}
+            >
                 <option value="comfortable">Comfortable</option>
                 <option value="compact">Compact</option>
                 <option value="dense">Dense</option>
@@ -222,22 +299,43 @@ export const renderNativeSettingsControls = (idPrefix: string) => (
         <fieldset className="form-row radio-group">
             <legend>Features</legend>
             <label>
-                <input type="checkbox" name="features" value="ocr" />
+                <input
+                    type="checkbox"
+                    name="features"
+                    value="ocr"
+                    defaultChecked={initialNativeSettings.features.includes('ocr')}
+                />
                 OCR
             </label>
             <label>
-                <input type="checkbox" name="features" value="llm" />
+                <input
+                    type="checkbox"
+                    name="features"
+                    value="llm"
+                    defaultChecked={initialNativeSettings.features.includes('llm')}
+                />
                 LLM
             </label>
             <label>
-                <input type="checkbox" name="features" value="geo" />
+                <input
+                    type="checkbox"
+                    name="features"
+                    value="geo"
+                    defaultChecked={initialNativeSettings.features.includes('geo')}
+                />
                 Geo lookup
             </label>
         </fieldset>
 
         <div className="form-row">
             <label htmlFor={`${idPrefix}-tags`}>Tags</label>
-            <select id={`${idPrefix}-tags`} name="tags" multiple size={4} defaultValue={[]}>
+            <select
+                id={`${idPrefix}-tags`}
+                name="tags"
+                multiple
+                size={4}
+                defaultValue={initialNativeSettings.tags}
+            >
                 <option value="alpha">Alpha</option>
                 <option value="beta">Beta</option>
                 <option value="gamma">Gamma</option>
@@ -253,7 +351,7 @@ export const renderNativeSettingsControls = (idPrefix: string) => (
                 name="notes"
                 rows={5}
                 placeholder="Write a note..."
-                defaultValue=""
+                defaultValue={initialNativeSettings.notes}
             />
         </div>
     </>

@@ -523,13 +523,15 @@ npm run demo:build
 npm run demo:preview
 ```
 
-The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. The controlled-bind tab enables `urlHash: true`, so every setting is visible and shareable in the browser address bar. The active tab is also reflected in the `demo` URL query parameter, so these links open a specific tab directly:
+The demo is organized into three tabs: controlled bind helpers, direct `useFormSaverDom`, and `FormSaverScope asChild`. The active tab is reflected in the `demo` URL query parameter, while the hash always mirrors the values for the selected tab:
 
 - `http://localhost:5173/?demo=controlled-bind`
 - `http://localhost:5173/?demo=dom-hook`
 - `http://localhost:5173/?demo=scope-component`
 
-It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
+Switching tabs first flushes pending changes from the current form and then updates the query parameter and hash together. The target hash is built from that tab's saved values, or from its shared defaults when it has not been saved yet. DOM-hook and scope saves also refresh the hash while their tab remains active. This routing behavior belongs only to the demo application; it does not change the FormSaver APIs.
+
+The controlled-bind tab additionally enables `urlHash: true`, so opening a link with controlled values in the hash restores them into React state. It includes text inputs, textarea, checkbox, radio buttons, checkbox groups, single select, multi-select, reset/clear/manual-save buttons, and a debug panel that shows raw saved `localStorage` JSON. The DOM tabs also include a small controlled add-on saved through bind helpers to show how custom controls can coexist with automatic native-control capture.
 
 ## API draft
 

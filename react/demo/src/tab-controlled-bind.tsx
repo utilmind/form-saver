@@ -5,13 +5,20 @@ import {
     DebugPanel,
     type DemoSettings,
     initialSettings,
+    type RegisterDemoTabSave,
     STORAGE_KEYS,
+    useRegisterDemoTabSave,
     useStorageDebug
 } from './demo-shared'
 
-export const ControlledBindTab = () => {
+interface ControlledBindTabProps {
+    registerSave: RegisterDemoTabSave
+}
+
+export const ControlledBindTab = ({ registerSave }: ControlledBindTabProps) => {
     const storageKey = STORAGE_KEYS['controlled-bind']
-    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+    const { savedJson, refreshSavedJson, handleFormSaved } =
+        useStorageDebug<DemoSettings>(storageKey)
 
     const form = useFormSaver<DemoSettings>({
         storageKey,
@@ -20,7 +27,7 @@ export const ControlledBindTab = () => {
         mergeUnknownKeys: true,
         urlHash: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver controlled demo error:', error)
         }
@@ -58,6 +65,8 @@ export const ControlledBindTab = () => {
         form.saveNow()
         refreshSavedJson()
     }, [form, refreshSavedJson])
+
+    useRegisterDemoTabSave(registerSave, handleSaveNow)
 
     return (
         <section className="tab-content">

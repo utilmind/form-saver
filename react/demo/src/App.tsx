@@ -11,15 +11,18 @@
  * - Keep the scenarios here aligned with the README examples and storage tests.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { type DemoTab } from './demo-shared'
+import {
+    DEFAULT_DEMO_TAB,
+    ensureDemoTabHash,
+    readDemoTabFromLocation,
+    writeDemoTabToLocation
+} from './demo-location'
+import { type DemoTab, type RegisterDemoTabSave } from './demo-shared'
 import { ControlledBindTab } from './tab-controlled-bind'
 import { DomHookTab } from './tab-dom-hook'
 import { ScopeComponentTab } from './tab-scope-component'
-
-const DEMO_QUERY_PARAM = 'demo'
-const DEFAULT_DEMO_TAB: DemoTab = 'controlled-bind'
 
 const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     {
@@ -39,32 +42,14 @@ const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     }
 ]
 
-const isDemoTab = (value: string | null): value is DemoTab =>
-    value === 'controlled-bind' || value === 'dom-hook' || value === 'scope-component'
-
-const readDemoTabFromLocation = (): DemoTab => {
-    if (typeof window === 'undefined') {
-        return DEFAULT_DEMO_TAB
-    }
-
-    const tab = new URLSearchParams(window.location.search).get(DEMO_QUERY_PARAM)
-
-    return isDemoTab(tab) ? tab : DEFAULT_DEMO_TAB
-}
-
-const writeDemoTabToLocation = (tab: DemoTab): void => {
-    if (typeof window === 'undefined') {
-        return
-    }
-
-    const url = new URL(window.location.href)
-    url.searchParams.set(DEMO_QUERY_PARAM, tab)
-    window.history.pushState(null, '', url)
-}
-
 export const App = () => {
     const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
+    const saveActiveTabRef = useRef<(() => void) | null>(null)
     const activeDescription = demoTabs.find((tab) => tab.id === activeTab)?.description
+
+    useEffect(() => {
+        ensureDemoTabHash(activeTab)
+    }, [activeTab])
 
     useEffect(() => {
         const handlePopState = (): void => {
@@ -78,10 +63,23 @@ export const App = () => {
         }
     }, [])
 
-    const handleSelectTab = useCallback((tab: DemoTab): void => {
-        setActiveTab(tab)
-        writeDemoTabToLocation(tab)
+    const registerActiveTabSave = useCallback<RegisterDemoTabSave>((saveNow): void => {
+        saveActiveTabRef.current = saveNow
     }, [])
+
+    const handleSelectTab = useCallback(
+        (tab: DemoTab): void => {
+            if (tab === activeTab) {
+                return
+            }
+
+            // Flush debounced form changes before the active tab unmounts.
+            saveActiveTabRef.current?.()
+            writeDemoTabToLocation(tab)
+            setActiveTab(tab)
+        },
+        [activeTab]
+    )
 
     return (
         <main className="app-shell">
@@ -113,9 +111,13 @@ export const App = () => {
 
             {activeDescription && <p className="tab-summary">{activeDescription}</p>}
 
-            {activeTab === 'controlled-bind' && <ControlledBindTab />}
-            {activeTab === 'dom-hook' && <DomHookTab />}
-            {activeTab === 'scope-component' && <ScopeComponentTab />}
+            {activeTab === DEFAULT_DEMO_TAB && (
+                <ControlledBindTab registerSave={registerActiveTabSave} />
+            )}
+            {activeTab === 'dom-hook' && <DomHookTab registerSave={registerActiveTabSave} />}
+            {activeTab === 'scope-component' && (
+                <ScopeComponentTab registerSave={registerActiveTabSave} />
+            )}
         </main>
     )
 }
