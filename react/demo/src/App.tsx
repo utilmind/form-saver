@@ -104,10 +104,10 @@ const AboutContent = ({ onViewDemo }: AboutContentProps) => (
     <main className="about-page">
         <div className="about-content">
             <p>
-                FormSaver, React hook package
+                <strong>FormSaver</strong>, React hook package
                 <br />
                 (c) 2008-2026,{' '}
-                <a href="https://github.com/utilmind/form-saver/" target="_blank" rel="noreferrer">
+                <a href="https://github.com/utilmind/form-saver/" className="outlink" target="_blank" rel="noreferrer">
                     utilmind
                 </a>
             </p>

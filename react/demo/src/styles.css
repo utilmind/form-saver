@@ -340,3 +340,19 @@ h1 {
     font-weight: 700;
     text-decoration: none;
 }
+
+
+a.outlink { /* play with outlink at https://jsfiddle.net/utilmind/5y6t2vaL/ */
+    padding-right: 0.55em; /* add padding to make image non-wrapable. */
+}
+a.outlink::after {
+    content: '';
+    background: no-repeat center url(data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2010%2010%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22%23333%22%20stroke-dasharray%3D%221.1%22%20d%3D%22M.5.5h9v9h-9z%22%2F%3E%3Cpath%20stroke%3D%22%23333%22%20stroke-linecap%3D%22round%22%20d%3D%22M7.6%202.33L2.33%207.6M7.6%202.33V7m0-4.67H3%22%2F%3E%3C%2Fsvg%3E);
+    vertical-align: middle;
+    width: 0.55em;
+    height: 0.55em;
+    min-width: 10px; /* it looks ugly if less than 10x10 */
+    min-height: 10px;
+    display: inline-block;
+    margin: 0 -0.55em 0.05em 0.2em; /* non-wrapable image */
+}
