@@ -2,6 +2,41 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-07-15]: React URL hash synchronization
+
+### Added
+
+- Added shared `saveEvent: 'change' | 'input'` behavior to controlled binders and DOM scopes. Text inputs and textareas now save on blur/change by default instead of persisting every keypress.
+- Added `autosaveIntervalSeconds`, defaulting to 30 seconds, to periodically save a dirty focused text control without resetting the timer on every keypress. Set it to `0` to disable periodic autosave.
+- Added exported defaults for debounce, save event, and focused-control autosave interval.
+- Added optional readable URL hash synchronization to the controlled `useFormSaver` API through `urlHash: true`.
+- Added deterministic restore priority where a recognized URL hash overrides browser storage without mixing stale local values.
+- Added readable repeated hash parameters for array values and runtime type restoration based on `initialValues` or binder defaults.
+- Added `clearUrlHashValues()` and configurable `restore` / `historyMode` URL hash options.
+- Added automatic `urlHash` support to `useFormSaverDom` and `FormSaverScope` with the same hash-first/storage-fallback behavior as controlled forms.
+- Added `restoreUrlHashFromStorage()` as both a hook helper and a standalone utility for route setups that keep form components mounted.
+- Enabled URL hash synchronization in all three `react/demo` form examples.
+- Added URL hash unit and hook integration tests.
+- Added synchronous `beforeunload` flushing for pending controlled-form changes.
+- Added focused-field reload recovery for controlled, DOM-hook, and scope APIs, matching the legacy jQuery behavior without weakening shared-hash priority.
+
+### Changed
+
+- Changed React URL hashes to omit empty strings, `null`, empty arrays, and empty array items.
+- Restored omitted string, `null`, and array hash fields as empty state while preserving checkbox defaults and numeric runtime templates.
+- Encoded standalone boolean checkbox deviations as compact `1` / `0` values and omitted checkbox state when it matches the controlled initial value or native DOM `defaultChecked`.
+- Coordinated checkbox defaults across FormSaver instances sharing one storage key so one scope cannot reintroduce another scope's default checkbox into the hash.
+- Avoided duplicate browser-storage writes when the prepared values are identical to the values already stored.
+- Updated the demo to use the lightweight default change/blur persistence mode instead of forcing DOM save-on-input.
+- Reused one prepared value set for browser storage and URL hash persistence so `mapBeforeSave` runs only once per save.
+- Changed the demo navigation to use clean destination URLs and rely on FormSaver initialization, rather than demo-specific localStorage-to-hash serialization.
+- Preserved merged values from shared storage keys when multiple FormSaver scopes synchronize one hash.
+- Updated the React and repository documentation with URL hash usage, page-navigation behavior, and restore semantics.
+- Fixed URL hash parsing so string values preserve their original case and incoming explicit empty parameters remain empty strings.
+- Fixed focused-field F5 recovery when multiple FormSaver instances share one `storageKey`; unload saves are now coordinated before the final reload marker is written.
+- Stopped rewriting the URL hash during `beforeunload`; the latest value is saved to storage and the hash is rebuilt after initialization, avoiding a visible new-hash → stale-hash → restored-hash sequence on F5.
+- Made Vitest startup compatible with Node 25+ by disabling Node's built-in Web Storage only for test workers, preventing it from shadowing jsdom `localStorage`/`sessionStorage`.
+
 ## [2026-05-11]: Migration from jQuery to React
 
 ### Added

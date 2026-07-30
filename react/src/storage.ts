@@ -64,7 +64,7 @@ const normalizeStoredData = <TValues extends FormSaverValuesConstraint<TValues>>
 
 // Merges current form values into existing storage while preserving unknown keys by default.
 // Using a manual loop instead of (...) spread to minimize allocations.
-const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
+export const mergeFormValues = <TValues extends FormSaverValuesConstraint<TValues>>(
     existingValues: Partial<TValues>,
     nextValues: Partial<TValues>,
     mergeUnknownKeys: boolean
@@ -92,6 +92,12 @@ const mergeValueObjects = <TValues extends FormSaverValuesConstraint<TValues>>(
 export const getStorage = (storageName: BrowserStorageName = DEF_STORAGE): Storage | null =>
     getWindowStorage(storageName)
 
+// Applies the optional save transform once so multiple persistence targets can share it.
+export const prepareFormValuesForSave = <TValues extends FormSaverValuesConstraint<TValues>>(
+    values: Partial<TValues>,
+    mapBeforeSave?: (values: Partial<TValues>) => Partial<TValues>
+): Partial<TValues> => (mapBeforeSave ? mapBeforeSave(values) : values)
+
 // Reads and validates one stored form envelope.
 export const readStoredForm = <TValues extends FormSaverValuesConstraint<TValues>>(
     storageKey: string,
@@ -118,7 +124,7 @@ export const writeStoredForm = <TValues extends FormSaverValuesConstraint<TValue
     if (storage && storageKey) {
         const now = options.now ?? Date.now
         const existing = readStoredForm<TValues>(storageKey, options)
-        const valuesToSave = options.mapBeforeSave ? options.mapBeforeSave(values) : values
+        const valuesToSave = prepareFormValuesForSave(values, options.mapBeforeSave)
         const meta: FormSaverMeta = {
             savedAt: now()
         }
@@ -128,7 +134,7 @@ export const writeStoredForm = <TValues extends FormSaverValuesConstraint<TValue
         }
 
         const data: StoredFormSaverData<TValues> = {
-            values: mergeValueObjects<TValues>(
+            values: mergeFormValues<TValues>(
                 existing ? existing.values : {},
                 valuesToSave,
                 options.mergeUnknownKeys !== false

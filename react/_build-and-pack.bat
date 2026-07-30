@@ -1,5 +1,7 @@
 @echo off
 
+set "TGZ=..\_packs\form-saver-react-0.1.0.tgz"
+
 call npm run test:run
 if errorlevel 1 (
     echo Test failed.
@@ -28,4 +30,12 @@ if errorlevel 1 (
     exit /b 1
 )
 
-echo Done. Use distribution package from "..\_packs\".
+REM call node -e "const fs=require('fs'),crypto=require('crypto');const file=process.argv[1];console.log('sha512-'+crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64'))" "%TGZ%"
+for /f "delims=" %%I in ('node -e "const fs=require('fs'),crypto=require('crypto');const file=process.argv[1];process.stdout.write('sha512-'+crypto.createHash('sha512').update(fs.readFileSync(file)).digest('base64'))" "%TGZ%"') do (
+    set "INTEGRITY=%%I"
+)
+
+echo.
+echo Package:   %TGZ%
+echo Integrity: %INTEGRITY%
+echo Done.

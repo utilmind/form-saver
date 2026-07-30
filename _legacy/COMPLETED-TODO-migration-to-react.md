@@ -52,7 +52,8 @@ The new React implementation lives in `react/`.
 - [x] Avoid writing initial default values to storage on first mount unless `saveOnMount` is enabled.
 - [x] Fix the demo restore loop caused by non-memoized callback options.
 - [x] Review the hook API against a typical Next.js settings form.
-- [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; controlled state uses it after React state changes, while DOM mode defaults to browser `change` events and uses debounce only after a save-triggering event.
+- [x] Decide whether the default debounce value should stay at `150ms`. Decision: keep `150ms` as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`; both APIs default to `saveEvent: 'change'`, while `'input'` remains an explicit save-while-typing mode.
+- [x] Add focused-control periodic autosave. Decision: `autosaveIntervalSeconds` defaults to 30 seconds, does not restart on every keypress, saves only dirty focused text controls, and accepts `0` to disable.
 - [x] Make `initialValues` optional for simple bind-only controlled forms; bind helpers infer simple defaults while explicit `initialValues` remains recommended for direct `values` usage and non-empty defaults.
 - [x] Add safe value helpers (`getString`, `getBoolean`, `getArray`, `getValue`) for components that omit `initialValues` but still need to read values in render logic.
 
@@ -84,6 +85,7 @@ This phase is intentionally separate from the typed controlled-state `useFormSav
 - [x] Decide whether URL hash synchronization should be reintroduced later. Decision: postpone; not part of the React MVP.
 - [x] Decide whether per-field load transforms are needed in the hook API. Decision: use form-level `mapAfterLoad` for now; per-field transforms can be added after real usage.
 - [x] Decide whether dirty-state tracking is needed after the demo app exists. Decision: keep dirty-state internal only; it is used for immediate `beforeunload` flushing and is not exposed in the public API.
+- [x] Reproduce the legacy focused-field F5 recovery: flush pending values on `beforeunload`, remember the active field per storage key, and prefer storage only when a stale hash differs in that field alone.
 - [x] Decide whether validation integration should be built-in or left to application code. Decision: no built-in validation integration; FormSaver saves and restores the user's current input even if the application later considers it invalid.
 
 ## Phase 5: Tests

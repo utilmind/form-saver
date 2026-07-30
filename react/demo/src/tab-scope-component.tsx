@@ -1,6 +1,7 @@
 import {
     collectDomFormValues,
     FormSaverScope,
+    type FormSaverValues,
     removeStoredForm,
     useFormSaver,
     writeStoredForm
@@ -12,23 +13,31 @@ import {
     type CustomAddonSettings,
     DebugPanel,
     initialCustomAddon,
+    type RegisterDemoTabSave,
     renderNativeSettingsControls,
     STORAGE_KEYS,
+    useRegisterDemoTabSave,
     useStorageDebug
 } from './demo-shared'
 
-export const ScopeComponentTab = () => {
+interface ScopeComponentTabProps {
+    registerSave: RegisterDemoTabSave
+}
+
+export const ScopeComponentTab = ({ registerSave }: ScopeComponentTabProps) => {
     const storageKey = STORAGE_KEYS['scope-component']
     const formRef = useRef<HTMLFormElement | null>(null)
-    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+    const { savedJson, refreshSavedJson, handleFormSaved } =
+        useStorageDebug<FormSaverValues>(storageKey)
 
     const customForm = useFormSaver<CustomAddonSettings>({
         storageKey,
         initialValues: initialCustomAddon,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver scope custom bind error:', error)
         }
@@ -69,15 +78,19 @@ export const ScopeComponentTab = () => {
     const handleClearStorage = useCallback((): void => {
         removeStoredForm(storageKey)
         customForm.clearStoredValues()
+        customForm.clearUrlHashValues()
         refreshSavedJson()
     }, [customForm, refreshSavedJson, storageKey])
+
+    useRegisterDemoTabSave(registerSave, handleSaveNow)
 
     return (
         <section className="tab-content">
             <div className="status-row">
                 <span>
                     This tab uses <code>{'<FormSaverScope asChild>'}</code>. The component clones
-                    the form and attaches its ref without creating an extra DOM element.
+                    the form and attaches its ref without creating an extra DOM element. Text edits
+                    save on blur or after 30 seconds while focused.
                 </span>
             </div>
             <section className="layout-grid">
@@ -85,8 +98,9 @@ export const ScopeComponentTab = () => {
                     asChild
                     storageKey={storageKey}
                     mergeUnknownKeys
+                    urlHash
                     onRestore={refreshSavedJson}
-                    onSave={refreshSavedJson}
+                    onSave={handleFormSaved}
                     onError={(error: unknown): void => {
                         console.error('FormSaverScope demo error:', error)
                     }}
@@ -107,7 +121,7 @@ export const ScopeComponentTab = () => {
                                 className="danger-button"
                                 onClick={handleClearStorage}
                             >
-                                Clear storage
+                                Clear storage and hash
                             </button>
                         </div>
                     </form>

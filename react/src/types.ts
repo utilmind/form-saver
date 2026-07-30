@@ -12,10 +12,11 @@
  *   storage.ts.
  */
 
-import type { ChangeEventHandler, RefCallback } from 'react'
+import type { ChangeEventHandler, FocusEventHandler, RefCallback } from 'react'
 
 export type BrowserStorageName = 'localStorage' | 'sessionStorage'
-export type FormSaverDomSaveEvent = 'change' | 'input'
+export type FormSaverSaveEvent = 'change' | 'input'
+export type FormSaverUrlHashHistoryMode = 'replace' | 'push'
 
 export type FormSaverPrimitive = string | number | boolean | null
 export type FormSaverValue = FormSaverPrimitive | FormSaverPrimitive[]
@@ -51,16 +52,31 @@ export interface WriteStoredFormOptions<
     mapBeforeSave?: (values: Partial<TValues>) => Partial<TValues>
 }
 
+export interface FormSaverUrlHashOptions {
+    restore?: boolean
+    historyMode?: FormSaverUrlHashHistoryMode
+}
+
+export interface RestoreUrlHashFromStorageOptions<
+    TValues extends FormSaverValuesConstraint<TValues> = FormSaverValues
+> extends ReadStoredFormOptions {
+    historyMode?: FormSaverUrlHashHistoryMode
+    defaultValues?: Partial<TValues>
+}
+
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {
     storageKey: string
     initialValues?: TValues
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
+    saveEvent?: FormSaverSaveEvent
+    autosaveIntervalSeconds?: number
     saveOnMount?: boolean
     version?: string | number
     mergeUnknownKeys?: boolean
     restoreUnknownKeys?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     mapBeforeSave?: (values: Partial<TValues>) => Partial<TValues>
     mapAfterLoad?: (
         values: Partial<TValues>,
@@ -76,8 +92,10 @@ export interface UseFormSaverDomOptions {
     storage?: BrowserStorageName
     enabled?: boolean
     debounceMs?: number
-    saveEvent?: FormSaverDomSaveEvent
+    saveEvent?: FormSaverSaveEvent
+    autosaveIntervalSeconds?: number
     restoreOnMount?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     version?: string | number
     mergeUnknownKeys?: boolean
     includePasswords?: boolean
@@ -100,6 +118,8 @@ export interface UseFormSaverDomResult<TRoot extends HTMLElement = HTMLElement> 
     restoreNow: () => StoredFormSaverData<FormSaverValues> | null
     resetValues: () => StoredFormSaverData<FormSaverValues> | null
     clearStoredValues: () => void
+    clearUrlHashValues: () => void
+    restoreUrlHashFromStorage: () => StoredFormSaverData<FormSaverValues> | null
     hasRestored: boolean
     restoredAt?: number
     lastSavedAt?: number
@@ -112,6 +132,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         value: string
         onChange: ChangeEventHandler<HTMLInputElement>
+        onBlur: FocusEventHandler<HTMLInputElement>
     }
 
     textarea: <K extends FormSaverFieldName<TValues>>(
@@ -120,6 +141,7 @@ export interface UseFormSaverBinders<TValues extends FormSaverValuesConstraint<T
         name: K
         value: string
         onChange: ChangeEventHandler<HTMLTextAreaElement>
+        onBlur: FocusEventHandler<HTMLTextAreaElement>
     }
 
     checkbox: <K extends FormSaverFieldName<TValues>>(
@@ -165,6 +187,8 @@ export interface UseFormSaverResult<TValues extends FormSaverValuesConstraint<TV
     replaceValues: (nextValues: TValues) => void
     resetValues: (nextValues?: TValues) => void
     clearStoredValues: () => void
+    clearUrlHashValues: () => void
+    restoreUrlHashFromStorage: () => StoredFormSaverData<TValues> | null
     saveNow: () => void
     getValue: <K extends FormSaverFieldName<TValues>>(
         name: K,

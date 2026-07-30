@@ -5,21 +5,29 @@ import {
     DebugPanel,
     type DemoSettings,
     initialSettings,
+    type RegisterDemoTabSave,
     STORAGE_KEYS,
+    useRegisterDemoTabSave,
     useStorageDebug
 } from './demo-shared'
 
-export const ControlledBindTab = () => {
+interface ControlledBindTabProps {
+    registerSave: RegisterDemoTabSave
+}
+
+export const ControlledBindTab = ({ registerSave }: ControlledBindTabProps) => {
     const storageKey = STORAGE_KEYS['controlled-bind']
-    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+    const { savedJson, refreshSavedJson, handleFormSaved } =
+        useStorageDebug<DemoSettings>(storageKey)
 
     const form = useFormSaver<DemoSettings>({
         storageKey,
         initialValues: initialSettings,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver controlled demo error:', error)
         }
@@ -30,7 +38,7 @@ export const ControlledBindTab = () => {
             return 'Restoring saved controlled values...'
         }
 
-        return 'Ready. Each field is controlled by React state and saved through bind helpers.'
+        return 'Ready. Text fields save on blur or after 30 seconds while focused; other controls save on change.'
     }, [form.hasRestored])
 
     const handleResultsPerPageChange = useCallback(
@@ -49,6 +57,7 @@ export const ControlledBindTab = () => {
 
     const handleClearStorage = useCallback((): void => {
         form.clearStoredValues()
+        form.clearUrlHashValues()
         refreshSavedJson()
     }, [form, refreshSavedJson])
 
@@ -56,6 +65,8 @@ export const ControlledBindTab = () => {
         form.saveNow()
         refreshSavedJson()
     }, [form, refreshSavedJson])
+
+    useRegisterDemoTabSave(registerSave, handleSaveNow)
 
     return (
         <section className="tab-content">
@@ -156,7 +167,7 @@ export const ControlledBindTab = () => {
                             className="danger-button"
                             onClick={handleClearStorage}
                         >
-                            Clear storage
+                            Clear storage and hash
                         </button>
                     </div>
                 </form>

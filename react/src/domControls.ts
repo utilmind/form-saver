@@ -85,9 +85,10 @@ export const getDomFormControls = (
     return result
 }
 
-export const collectDomFormValues = (
+const collectDomControlValues = (
     root: HTMLElement,
-    options: DomControlOptions = {}
+    options: DomControlOptions,
+    useDefaultValues: boolean
 ): FormSaverValues => {
     const controls = getDomFormControls(root, options)
     const values: FormSaverValues = {}
@@ -112,6 +113,8 @@ export const collectDomFormValues = (
         if (tag === 'INPUT') {
             const input = ctrl as HTMLInputElement
             const type = input.type
+            const isChecked = useDefaultValues ? input.defaultChecked : input.checked
+
             if (type === 'checkbox') {
                 if (checkboxCounts[name] > 1) {
                     let selected = hasOwnValue(values, name) ? values[name] : undefined
@@ -119,43 +122,60 @@ export const collectDomFormValues = (
                         selected = []
                         values[name] = selected
                     }
-                    if (input.checked) {
+                    if (isChecked) {
                         selected.push(input.value)
                     }
                 } else {
-                    values[name] = input.checked
+                    values[name] = isChecked
                 }
             } else if (type === 'radio') {
-                if (input.checked) {
+                if (isChecked) {
                     values[name] = input.value
                 } else if (!hasOwnValue(values, name)) {
                     values[name] = null
                 }
             } else {
-                values[name] = input.value
+                values[name] = useDefaultValues ? input.defaultValue : input.value
             }
         } else if (tag === 'TEXTAREA') {
-            values[name] = (ctrl as HTMLTextAreaElement).value
+            const textarea = ctrl as HTMLTextAreaElement
+            values[name] = useDefaultValues ? textarea.defaultValue : textarea.value
         } else if (tag === 'SELECT') {
             const select = ctrl as HTMLSelectElement
-            if (select.multiple) {
-                const selected: string[] = []
-                const opts = select.options
-                for (let j = 0; j < opts.length; ++j) {
-                    const opt = opts[j]
-                    if (opt.selected) {
-                        selected.push(opt.value)
-                    }
+            const selected: string[] = []
+            const opts = select.options
+
+            for (let j = 0; j < opts.length; ++j) {
+                const opt = opts[j]
+                const isSelected = useDefaultValues ? opt.defaultSelected : opt.selected
+
+                if (isSelected) {
+                    selected.push(opt.value)
                 }
+            }
+
+            if (select.multiple) {
                 values[name] = selected
+            } else if (selected.length) {
+                values[name] = selected[selected.length - 1]
             } else {
-                values[name] = select.value
+                values[name] = opts.length ? opts[0].value : ''
             }
         }
     }
 
     return values
 }
+
+export const collectDomFormValues = (
+    root: HTMLElement,
+    options: DomControlOptions = {}
+): FormSaverValues => collectDomControlValues(root, options, false)
+
+export const collectDomFormDefaultValues = (
+    root: HTMLElement,
+    options: DomControlOptions = {}
+): FormSaverValues => collectDomControlValues(root, options, true)
 
 const restoreControlValue = (control: SupportedControl, value: FormSaverValue): void => {
     const tag = control.tagName

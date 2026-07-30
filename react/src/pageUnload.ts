@@ -1,0 +1,312 @@
+/**
+ * Synchronous page-unload persistence helpers.
+ *
+ * Browsers can write storage during beforeunload, but a last-second history
+ * replacement may not become the URL used for the following reload. To avoid
+ * restoring a stale hash over the freshly saved focused field, FormSaver keeps
+ * a small per-form marker in sessionStorage and checks it during restoration.
+ */
+
+import { getStorage } from './storage'
+import type {
+    BrowserStorageName,
+    FormSaverValue,
+    FormSaverValuesConstraint,
+    StoredFormSaverData
+} from './types'
+
+const PAGE_UNLOAD_MARKERS_KEY = 'form-saver-react:page-unload-markers'
+
+type PageUnloadMarker = {
+    fieldName: string
+    savedAt: number
+}
+
+type PageUnloadMarkers = Partial<Record<string, PageUnloadMarker>>
+
+type PageUnloadSaveResult = {
+    meta: {
+        savedAt: number
+    }
+} | null
+
+interface SubscribeToPageUnloadOptions {
+    storageKey: string
+    storage: BrowserStorageName
+    trackUrlHash: boolean
+    save: () => PageUnloadSaveResult
+    ownsField: (fieldName: string, activeElement: Element) => boolean
+}
+
+const getMarkerId = (storageKey: string, storage: BrowserStorageName): string =>
+    JSON.stringify([storage, storageKey])
+
+const readMarkers = (): PageUnloadMarkers => {
+    const storage = getStorage('sessionStorage')
+    if (!storage) {
+        return {}
+    }
+
+    try {
+        const raw = storage.getItem(PAGE_UNLOAD_MARKERS_KEY)
+        if (!raw) {
+            return {}
+        }
+
+        const parsed = JSON.parse(raw) as unknown
+        return parsed && typeof parsed === 'object' ? parsed : {}
+    } catch {
+        return {}
+    }
+}
+
+const writeMarker = (
+    storageKey: string,
+    storageName: BrowserStorageName,
+    marker: PageUnloadMarker | null
+): void => {
+    const storage = getStorage('sessionStorage')
+    if (!storage) {
+        return
+    }
+
+    try {
+        const markers = readMarkers()
+        const markerId = getMarkerId(storageKey, storageName)
+
+        if (marker) {
+            markers[markerId] = marker
+        } else {
+            delete markers[markerId]
+        }
+
+        if (Object.keys(markers).length) {
+            storage.setItem(PAGE_UNLOAD_MARKERS_KEY, JSON.stringify(markers))
+        } else {
+            storage.removeItem(PAGE_UNLOAD_MARKERS_KEY)
+        }
+    } catch {
+        // sessionStorage is best-effort and may be unavailable in private contexts.
+    }
+}
+
+const readMarker = (
+    storageKey: string,
+    storageName: BrowserStorageName
+): PageUnloadMarker | null => {
+    const marker = readMarkers()[getMarkerId(storageKey, storageName)]
+
+    return marker && typeof marker.fieldName === 'string' && typeof marker.savedAt === 'number'
+        ? marker
+        : null
+}
+
+const scheduleMarkerRemoval = (
+    storageKey: string,
+    storageName: BrowserStorageName,
+    marker: PageUnloadMarker
+): void => {
+    setTimeout(() => {
+        const currentMarker = readMarker(storageKey, storageName)
+
+        if (
+            currentMarker &&
+            currentMarker.fieldName === marker.fieldName &&
+            currentMarker.savedAt === marker.savedAt
+        ) {
+            writeMarker(storageKey, storageName, null)
+        }
+    }, 0)
+}
+
+const getNamedActiveControl = (): { element: Element; fieldName: string } | null => {
+    if (typeof document === 'undefined') {
+        return null
+    }
+
+    const element = document.activeElement
+    if (
+        !(
+            element instanceof HTMLInputElement ||
+            element instanceof HTMLTextAreaElement ||
+            element instanceof HTMLSelectElement
+        ) ||
+        !element.name
+    ) {
+        return null
+    }
+
+    return {
+        element,
+        fieldName: element.name
+    }
+}
+
+const areValuesEqual = (
+    first: FormSaverValue | undefined,
+    second: FormSaverValue | undefined
+): boolean => {
+    if (!Array.isArray(first) || !Array.isArray(second)) {
+        return Object.is(first, second)
+    }
+
+    if (first.length !== second.length) {
+        return false
+    }
+
+    for (let index = 0; index < first.length; ++index) {
+        if (!Object.is(first[index], second[index])) {
+            return false
+        }
+    }
+
+    return true
+}
+
+type PageUnloadSubscription = SubscribeToPageUnloadOptions & {
+    id: number
+}
+
+type PageUnloadSubscriptionGroup = {
+    storageKey: string
+    storage: BrowserStorageName
+    trackUrlHash: boolean
+    focusedFieldName: string | null
+    subscriptions: PageUnloadSubscription[]
+}
+
+const pageUnloadSubscriptions = new Map<number, PageUnloadSubscription>()
+let nextPageUnloadSubscriptionId = 1
+let pageUnloadWindow: Window | null = null
+
+const handleBeforeUnload = (): void => {
+    const activeControl = getNamedActiveControl()
+    const groups = new Map<string, PageUnloadSubscriptionGroup>()
+
+    pageUnloadSubscriptions.forEach((subscription) => {
+        const groupId = getMarkerId(subscription.storageKey, subscription.storage)
+        let group = groups.get(groupId)
+
+        if (!group) {
+            group = {
+                storageKey: subscription.storageKey,
+                storage: subscription.storage,
+                trackUrlHash: false,
+                focusedFieldName: null,
+                subscriptions: []
+            }
+            groups.set(groupId, group)
+        }
+
+        group.trackUrlHash = group.trackUrlHash || subscription.trackUrlHash
+        group.subscriptions.push(subscription)
+
+        if (
+            activeControl &&
+            subscription.ownsField(activeControl.fieldName, activeControl.element)
+        ) {
+            group.focusedFieldName = activeControl.fieldName
+        }
+    })
+
+    groups.forEach((group) => {
+        let latestSaved: PageUnloadSaveResult = null
+
+        for (let index = 0; index < group.subscriptions.length; ++index) {
+            try {
+                const saved = group.subscriptions[index].save()
+
+                if (saved) {
+                    latestSaved = saved
+                }
+            } catch {
+                // One saver must not prevent another saver sharing the same storage key from flushing.
+            }
+        }
+
+        if (!group.trackUrlHash) {
+            return
+        }
+
+        writeMarker(
+            group.storageKey,
+            group.storage,
+            latestSaved && group.focusedFieldName
+                ? {
+                      fieldName: group.focusedFieldName,
+                      savedAt: latestSaved.meta.savedAt
+                  }
+                : null
+        )
+    })
+}
+
+const startPageUnloadListener = (targetWindow: Window): void => {
+    if (pageUnloadWindow === targetWindow) {
+        return
+    }
+
+    pageUnloadWindow?.removeEventListener('beforeunload', handleBeforeUnload)
+    targetWindow.addEventListener('beforeunload', handleBeforeUnload)
+    pageUnloadWindow = targetWindow
+}
+
+const stopPageUnloadListenerIfUnused = (): void => {
+    if (pageUnloadSubscriptions.size || !pageUnloadWindow) {
+        return
+    }
+
+    pageUnloadWindow.removeEventListener('beforeunload', handleBeforeUnload)
+    pageUnloadWindow = null
+}
+
+export const subscribeToPageUnload = (options: SubscribeToPageUnloadOptions): (() => void) => {
+    if (typeof window === 'undefined') {
+        return () => undefined
+    }
+
+    const id = nextPageUnloadSubscriptionId++
+    pageUnloadSubscriptions.set(id, {
+        ...options,
+        id
+    })
+    startPageUnloadListener(window)
+
+    return () => {
+        pageUnloadSubscriptions.delete(id)
+        stopPageUnloadListenerIfUnused()
+    }
+}
+
+export const shouldPreferStorageAfterPageUnload = <
+    TValues extends FormSaverValuesConstraint<TValues>
+>(
+    storageKey: string,
+    storageName: BrowserStorageName,
+    hashValues: Partial<TValues>,
+    stored: StoredFormSaverData<TValues>
+): boolean => {
+    const marker = readMarker(storageKey, storageName)
+    if (!marker) {
+        return false
+    }
+
+    scheduleMarkerRemoval(storageKey, storageName, marker)
+
+    if (marker.savedAt !== stored.meta.savedAt) {
+        return false
+    }
+
+    const fieldName = marker.fieldName as keyof TValues
+    if (areValuesEqual(hashValues[fieldName], stored.values[fieldName])) {
+        return false
+    }
+
+    for (const key in hashValues) {
+        if (key !== marker.fieldName && !areValuesEqual(hashValues[key], stored.values[key])) {
+            return false
+        }
+    }
+
+    return true
+}

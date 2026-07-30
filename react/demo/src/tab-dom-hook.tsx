@@ -1,4 +1,4 @@
-import { useFormSaver, useFormSaverDom } from 'form-saver-react'
+import { type FormSaverValues, useFormSaver, useFormSaverDom } from 'form-saver-react'
 import { type FormEvent, useCallback } from 'react'
 
 import {
@@ -6,22 +6,29 @@ import {
     type CustomAddonSettings,
     DebugPanel,
     initialCustomAddon,
+    type RegisterDemoTabSave,
     renderNativeSettingsControls,
     STORAGE_KEYS,
+    useRegisterDemoTabSave,
     useStorageDebug
 } from './demo-shared'
 
-export const DomHookTab = () => {
+interface DomHookTabProps {
+    registerSave: RegisterDemoTabSave
+}
+
+export const DomHookTab = ({ registerSave }: DomHookTabProps) => {
     const storageKey = STORAGE_KEYS['dom-hook']
-    const { savedJson, refreshSavedJson } = useStorageDebug(storageKey)
+    const { savedJson, refreshSavedJson, handleFormSaved } =
+        useStorageDebug<FormSaverValues>(storageKey)
 
     const domForm = useFormSaverDom<HTMLFormElement>({
         storageKey,
         debounceMs: 150,
-        saveEvent: 'input',
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver DOM hook demo error:', error)
         }
@@ -32,8 +39,9 @@ export const DomHookTab = () => {
         initialValues: initialCustomAddon,
         debounceMs: 150,
         mergeUnknownKeys: true,
+        urlHash: true,
         onRestore: refreshSavedJson,
-        onSave: refreshSavedJson,
+        onSave: handleFormSaved,
         onError: (error: unknown): void => {
             console.error('FormSaver DOM hook custom bind error:', error)
         }
@@ -57,15 +65,19 @@ export const DomHookTab = () => {
 
     const handleClearStorage = useCallback((): void => {
         domForm.clearStoredValues()
+        domForm.clearUrlHashValues()
         refreshSavedJson()
     }, [domForm, refreshSavedJson])
+
+    useRegisterDemoTabSave(registerSave, handleSaveNow)
 
     return (
         <section className="tab-content">
             <div className="status-row">
                 <span>
                     This tab uses <code>useFormSaverDom</code>. Standard named controls are captured
-                    automatically; the custom add-on is saved with bind helpers.
+                    automatically. Text fields use change/blur plus the 30-second focused autosave;
+                    the custom add-on uses bind helpers.
                 </span>
             </div>
             <section className="layout-grid">
@@ -85,7 +97,7 @@ export const DomHookTab = () => {
                             className="danger-button"
                             onClick={handleClearStorage}
                         >
-                            Clear storage
+                            Clear storage and hash
                         </button>
                     </div>
                 </form>

@@ -11,15 +11,21 @@
  * - Keep the scenarios here aligned with the README examples and storage tests.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { type DemoTab } from './demo-shared'
+import { AppLink } from './app-link'
+import {
+    DEFAULT_DEMO_TAB,
+    type DemoPage,
+    readDemoPageFromLocation,
+    readDemoTabFromLocation,
+    writeAboutPageToLocation,
+    writeDemoTabToLocation
+} from './demo-location'
+import { type DemoTab, type RegisterDemoTabSave } from './demo-shared'
 import { ControlledBindTab } from './tab-controlled-bind'
 import { DomHookTab } from './tab-dom-hook'
 import { ScopeComponentTab } from './tab-scope-component'
-
-const DEMO_QUERY_PARAM = 'demo'
-const DEFAULT_DEMO_TAB: DemoTab = 'controlled-bind'
 
 const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     {
@@ -39,49 +45,14 @@ const demoTabs: Array<{ id: DemoTab; label: string; description: string }> = [
     }
 ]
 
-const isDemoTab = (value: string | null): value is DemoTab =>
-    value === 'controlled-bind' || value === 'dom-hook' || value === 'scope-component'
-
-const readDemoTabFromLocation = (): DemoTab => {
-    if (typeof window === 'undefined') {
-        return DEFAULT_DEMO_TAB
-    }
-
-    const tab = new URLSearchParams(window.location.search).get(DEMO_QUERY_PARAM)
-
-    return isDemoTab(tab) ? tab : DEFAULT_DEMO_TAB
+interface DemoContentProps {
+    activeTab: DemoTab
+    onSelectTab: (tab: DemoTab) => void
+    registerActiveTabSave: RegisterDemoTabSave
 }
 
-const writeDemoTabToLocation = (tab: DemoTab): void => {
-    if (typeof window === 'undefined') {
-        return
-    }
-
-    const url = new URL(window.location.href)
-    url.searchParams.set(DEMO_QUERY_PARAM, tab)
-    window.history.pushState(null, '', url)
-}
-
-export const App = () => {
-    const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
+const DemoContent = ({ activeTab, onSelectTab, registerActiveTabSave }: DemoContentProps) => {
     const activeDescription = demoTabs.find((tab) => tab.id === activeTab)?.description
-
-    useEffect(() => {
-        const handlePopState = (): void => {
-            setActiveTab(readDemoTabFromLocation())
-        }
-
-        window.addEventListener('popstate', handlePopState)
-
-        return () => {
-            window.removeEventListener('popstate', handlePopState)
-        }
-    }, [])
-
-    const handleSelectTab = useCallback((tab: DemoTab): void => {
-        setActiveTab(tab)
-        writeDemoTabToLocation(tab)
-    }, [])
 
     return (
         <main className="app-shell">
@@ -102,7 +73,7 @@ export const App = () => {
                         className={tab.id === activeTab ? 'tab-button is-active' : 'tab-button'}
                         aria-current={tab.id === activeTab ? 'page' : undefined}
                         onClick={() => {
-                            handleSelectTab(tab.id)
+                            onSelectTab(tab.id)
                         }}
                     >
                         <span>{tab.label}</span>
@@ -113,9 +84,136 @@ export const App = () => {
 
             {activeDescription && <p className="tab-summary">{activeDescription}</p>}
 
-            {activeTab === 'controlled-bind' && <ControlledBindTab />}
-            {activeTab === 'dom-hook' && <DomHookTab />}
-            {activeTab === 'scope-component' && <ScopeComponentTab />}
+            {activeTab === DEFAULT_DEMO_TAB && (
+                <ControlledBindTab registerSave={registerActiveTabSave} />
+            )}
+            {activeTab === 'dom-hook' && <DomHookTab registerSave={registerActiveTabSave} />}
+            {activeTab === 'scope-component' && (
+                <ScopeComponentTab registerSave={registerActiveTabSave} />
+            )}
         </main>
+    )
+}
+
+interface AboutContentProps {
+    onViewDemo: () => void
+}
+
+const AboutContent = ({ onViewDemo }: AboutContentProps) => (
+    <main className="about-page">
+        <div className="about-content">
+            <p>
+                <strong>FormSaver</strong>, React hook package
+                <br />
+                (c) 2008–2026,{' '}
+                <a
+                    href="https://github.com/utilmind/form-saver/"
+                    className="outlink"
+                    target="_blank"
+                    rel="noreferrer"
+                >
+                    utilmind
+                </a>
+            </p>
+
+            <p>
+                <AppLink href="/" onNavigate={onViewDemo}>
+                    View demo
+                </AppLink>
+            </p>
+        </div>
+    </main>
+)
+
+export const App = () => {
+    const [page, setPage] = useState<DemoPage>(() => readDemoPageFromLocation())
+    const [activeTab, setActiveTab] = useState<DemoTab>(() => readDemoTabFromLocation())
+    const saveActiveTabRef = useRef<(() => void) | null>(null)
+
+    useEffect(() => {
+        const handlePopState = (): void => {
+            const nextPage = readDemoPageFromLocation()
+
+            setPage(nextPage)
+            if (nextPage === 'demo') {
+                setActiveTab(readDemoTabFromLocation())
+            }
+        }
+
+        window.addEventListener('popstate', handlePopState)
+
+        return () => {
+            window.removeEventListener('popstate', handlePopState)
+        }
+    }, [])
+
+    const registerActiveTabSave = useCallback<RegisterDemoTabSave>((saveNow): void => {
+        saveActiveTabRef.current = saveNow
+    }, [])
+
+    const handleSelectTab = useCallback(
+        (tab: DemoTab): void => {
+            if (tab === activeTab) {
+                return
+            }
+
+            // Flush debounced form changes before the active tab unmounts.
+            saveActiveTabRef.current?.()
+            writeDemoTabToLocation(tab)
+            setActiveTab(tab)
+        },
+        [activeTab]
+    )
+
+    const handleViewAbout = useCallback((): void => {
+        if (page === 'about') {
+            return
+        }
+
+        // Persist the current form before removing its settings from the URL.
+        saveActiveTabRef.current?.()
+        writeAboutPageToLocation()
+        setPage('about')
+    }, [page])
+
+    const handleViewDemo = useCallback((): void => {
+        if (page === 'demo') {
+            return
+        }
+
+        writeDemoTabToLocation(activeTab)
+        setPage('demo')
+    }, [activeTab, page])
+
+    return (
+        <div className="site-shell">
+            {page === 'demo' ? (
+                <DemoContent
+                    activeTab={activeTab}
+                    onSelectTab={handleSelectTab}
+                    registerActiveTabSave={registerActiveTabSave}
+                />
+            ) : (
+                <AboutContent onViewDemo={handleViewDemo} />
+            )}
+
+            <footer className="site-navigation" aria-label="Demo pages">
+                <AppLink
+                    href="/"
+                    aria-current={page === 'demo' ? 'page' : undefined}
+                    onNavigate={handleViewDemo}
+                >
+                    Demo
+                </AppLink>
+                <span aria-hidden="true">|</span>
+                <AppLink
+                    href="/about/"
+                    aria-current={page === 'about' ? 'page' : undefined}
+                    onNavigate={handleViewAbout}
+                >
+                    About
+                </AppLink>
+            </footer>
+        </div>
     )
 }

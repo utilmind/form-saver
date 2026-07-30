@@ -15,16 +15,41 @@
 
 import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
-import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
+import {
+    DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
+    DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+    DEFAULT_FORM_SAVER_SAVE_EVENT
+} from './defaults'
+import { useFocusedControlAutosave } from './focusedControlAutosave'
+import { subscribeToPageUnload } from './pageUnload'
+import { useBrowserLayoutEffect } from './reactEffects'
+import {
+    mergeFormValues,
+    prepareFormValuesForSave,
+    readStoredForm,
+    removeStoredForm,
+    writeStoredForm
+} from './storage'
 import type {
     FormSaverFieldName,
+    FormSaverMeta,
     FormSaverPrimitive,
     FormSaverValue,
     FormSaverValuesConstraint,
+    StoredFormSaverData,
     UseFormSaverBinders,
     UseFormSaverOptions,
     UseFormSaverResult
 } from './types'
+import {
+    clearFormValuesFromUrlHash,
+    getRegisteredUrlHashDefaultValues,
+    resolveFormRestoreSource,
+    restoreUrlHashFromStorage as restoreStoredUrlHash,
+    subscribeToUrlHashDefaultValues,
+    writeFormValuesToUrlHash
+} from './urlHash'
+import { areFormSaverValueMapsEqual, haveFormSaverValuesChanged } from './valueEquality'
 
 // Converts persisted primitive values to a controlled input string.
 const valueToInputString = (value: FormSaverValue | undefined): string =>
@@ -152,13 +177,16 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const {
         storageKey,
         initialValues,
-        storage = 'localStorage', // 'localStorage' or 'sessionStorage'
+        storage = 'localStorage',
         enabled = true,
-        debounceMs = 150, // ms
+        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+        saveEvent = DEFAULT_FORM_SAVER_SAVE_EVENT,
+        autosaveIntervalSeconds = DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
         saveOnMount = false,
         version,
         mergeUnknownKeys = true,
         restoreUnknownKeys = false,
+        urlHash = false,
         mapBeforeSave,
         mapAfterLoad,
         onRestore,
@@ -166,33 +194,66 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         onError
     } = options
 
+    const urlHashEnabled = urlHash === true || typeof urlHash === 'object'
+    const restoreFromUrlHash =
+        urlHash === true || (typeof urlHash === 'object' && urlHash.restore !== false)
+    const urlHashHistoryMode =
+        typeof urlHash === 'object' ? (urlHash.historyMode ?? 'replace') : 'replace'
+
     const emptyInitialValuesRef = useRef<TValues>({} as TValues)
     const initialValuesRef = useRef<TValues>(initialValues ?? emptyInitialValuesRef.current)
     const registeredDefaultsRef = useRef<Partial<TValues>>({})
-    const skipNextSaveRef = useRef(!saveOnMount)
+    const initialHashSyncPendingRef = useRef(!saveOnMount)
+    const pendingSaveRef = useRef(saveOnMount)
+    const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const isDirtyRef = useRef(false)
+    const autosaveActionRef = useRef<() => void>(() => undefined)
     const [values, setValuesState] = useState<TValues>(
         initialValues ?? emptyInitialValuesRef.current
     )
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
+    const valuesRef = useLatestRef(values)
     const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
     const mapAfterLoadRef = useLatestRef(mapAfterLoad)
     const onRestoreRef = useLatestRef(onRestore)
     const onSaveRef = useLatestRef(onSave)
     const onErrorRef = useLatestRef(onError)
+    const { schedule: scheduleFocusedAutosave, cancel: cancelFocusedAutosave } =
+        useFocusedControlAutosave({
+            enabled,
+            intervalSeconds: autosaveIntervalSeconds,
+            isDirty: () => isDirtyRef.current,
+            save: () => autosaveActionRef.current()
+        })
 
-    // Keep the latest initial values available for reset without forcing rehydration.
+    const clearSaveTimer = useCallback((): void => {
+        if (saveTimerRef.current !== null) {
+            clearTimeout(saveTimerRef.current)
+            saveTimerRef.current = null
+        }
+    }, [])
+
     useEffect(() => {
         initialValuesRef.current = initialValues ?? emptyInitialValuesRef.current
     }, [initialValues])
 
-    // Keep the skip flag in sync when the storage target changes.
-    useEffect(() => {
-        skipNextSaveRef.current = !saveOnMount
-    }, [saveOnMount, storage, storageKey])
+    useBrowserLayoutEffect(() => {
+        if (!storageKey) {
+            return
+        }
 
-    // Restore after mount so Next.js server rendering never touches browser storage.
+        return subscribeToUrlHashDefaultValues(storageKey, storage, () =>
+            buildResetValues<TValues>(initialValuesRef.current, registeredDefaultsRef.current)
+        )
+    }, [storage, storageKey])
+
+    useEffect(() => {
+        initialHashSyncPendingRef.current = !saveOnMount
+        pendingSaveRef.current = saveOnMount
+    }, [saveOnMount, storage, storageKey, urlHashEnabled])
+
     useEffect(() => {
         if (!enabled) {
             setHasRestored(true)
@@ -200,14 +261,43 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         }
 
         try {
-            const stored = readStoredForm<TValues>(storageKey, { storage })
-            if (!stored) {
+            const restoreSource =
+                urlHashEnabled && restoreFromUrlHash && typeof window !== 'undefined'
+                    ? resolveFormRestoreSource<TValues>(
+                          storageKey,
+                          window.location.hash,
+                          buildResetValues<TValues>(
+                              initialValuesRef.current,
+                              registeredDefaultsRef.current
+                          ),
+                          {
+                              storage,
+                              restoreUnknownKeys
+                          }
+                      )
+                    : (() => {
+                          const stored = readStoredForm<TValues>(storageKey, { storage })
+
+                          return {
+                              source: stored ? ('storage' as const) : null,
+                              values: stored?.values ?? null,
+                              stored
+                          }
+                      })()
+            const sourceValues = restoreSource.values
+
+            if (!sourceValues) {
                 return
             }
 
+            const meta: FormSaverMeta = restoreSource.stored?.meta ?? {
+                savedAt: Date.now(),
+                ...(version === undefined ? {} : { version })
+            }
             const loadedValues = mapAfterLoadRef.current
-                ? mapAfterLoadRef.current(stored.values, stored.meta)
-                : stored.values
+                ? mapAfterLoadRef.current(sourceValues, meta)
+                : sourceValues
+
             if (!loadedValues) {
                 return
             }
@@ -219,9 +309,18 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                 restoreUnknownKeys
             )
 
-            setValuesState((current) => mergeValuesIfChanged<TValues>(current, knownValues))
-            setRestoredAt(stored.meta.savedAt)
-            onRestoreRef.current?.(knownValues, stored.meta)
+            setValuesState((current) => {
+                const nextValues = mergeValuesIfChanged<TValues>(current, knownValues)
+                valuesRef.current = nextValues
+                return nextValues
+            })
+            setRestoredAt(meta.savedAt)
+            onRestoreRef.current?.(knownValues, meta)
+
+            if (restoreSource.source === 'hash') {
+                initialHashSyncPendingRef.current = false
+                pendingSaveRef.current = true
+            }
         } catch (error) {
             onErrorRef.current?.(error)
         } finally {
@@ -232,117 +331,271 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         mapAfterLoadRef,
         onErrorRef,
         onRestoreRef,
+        restoreFromUrlHash,
         restoreUnknownKeys,
         storage,
-        storageKey
+        storageKey,
+        urlHashEnabled,
+        valuesRef,
+        version
     ])
 
-    // Save the current controlled state to browser storage.
-    const saveValues = useCallback(
-        (nextValues: TValues): void => {
+    const persistValues = useCallback(
+        (
+            nextValues: TValues,
+            saveToStorage: boolean,
+            saveToUrlHash: boolean
+        ): StoredFormSaverData<TValues> | null => {
             if (!enabled || !storageKey) {
-                return
+                return null
             }
 
             try {
-                const saved = writeStoredForm<TValues>(storageKey, nextValues, {
-                    storage,
-                    version,
-                    mergeUnknownKeys,
-                    mapBeforeSave: mapBeforeSaveRef.current
-                })
+                const valuesToSave = prepareFormValuesForSave<TValues>(
+                    nextValues,
+                    mapBeforeSaveRef.current
+                )
+                const storedBeforeSave = readStoredForm<TValues>(storageKey, { storage })
+                const shouldWriteStorage =
+                    saveToStorage &&
+                    (!storedBeforeSave ||
+                        (mergeUnknownKeys
+                            ? haveFormSaverValuesChanged(valuesToSave, storedBeforeSave.values)
+                            : !areFormSaverValueMapsEqual(valuesToSave, storedBeforeSave.values)))
+                const newlySaved = shouldWriteStorage
+                    ? writeStoredForm<TValues>(storageKey, valuesToSave, {
+                          storage,
+                          version,
+                          mergeUnknownKeys
+                      })
+                    : null
+                const currentStored = newlySaved ?? storedBeforeSave
 
-                if (saved) {
-                    setLastSavedAt(saved.meta.savedAt)
-                    onSaveRef.current?.(saved.values, saved.meta)
+                if (saveToUrlHash && urlHashEnabled) {
+                    const storedValues = mergeUnknownKeys ? (currentStored?.values ?? {}) : {}
+                    const hashValues =
+                        newlySaved?.values ??
+                        mergeFormValues<TValues>(storedValues, valuesToSave, mergeUnknownKeys)
+
+                    writeFormValuesToUrlHash<TValues>(
+                        hashValues,
+                        urlHashHistoryMode,
+                        getRegisteredUrlHashDefaultValues<TValues>(storageKey, storage)
+                    )
                 }
+
+                if (saveToStorage && currentStored) {
+                    isDirtyRef.current = false
+                    cancelFocusedAutosave()
+                }
+
+                if (newlySaved) {
+                    setLastSavedAt(newlySaved.meta.savedAt)
+                    onSaveRef.current?.(newlySaved.values, newlySaved.meta)
+                }
+
+                return currentStored
             } catch (error) {
                 onErrorRef.current?.(error)
+                return null
             }
         },
         [
             enabled,
+            cancelFocusedAutosave,
             mapBeforeSaveRef,
             mergeUnknownKeys,
             onErrorRef,
             onSaveRef,
             storage,
             storageKey,
+            urlHashEnabled,
+            urlHashHistoryMode,
             version
         ]
     )
 
-    // Persist value changes after restore is complete.
+    const scheduleSave = useCallback((): void => {
+        clearSaveTimer()
+
+        if (debounceMs <= 0) {
+            persistValues(valuesRef.current, true, true)
+            return
+        }
+
+        saveTimerRef.current = setTimeout(() => {
+            saveTimerRef.current = null
+            persistValues(valuesRef.current, true, true)
+        }, debounceMs)
+    }, [clearSaveTimer, debounceMs, persistValues, valuesRef])
+
     useEffect(() => {
         if (!enabled || !hasRestored) {
             return
         }
 
-        if (skipNextSaveRef.current) {
-            skipNextSaveRef.current = false
+        if (initialHashSyncPendingRef.current) {
+            initialHashSyncPendingRef.current = false
+            persistValues(valuesRef.current, false, true)
             return
         }
 
-        if (debounceMs <= 0) {
-            saveValues(values)
+        if (!pendingSaveRef.current) {
             return
         }
 
-        const timerId = setTimeout(() => {
-            saveValues(values)
-        }, debounceMs)
+        pendingSaveRef.current = false
+        scheduleSave()
+    }, [enabled, hasRestored, persistValues, scheduleSave, values, valuesRef])
 
-        return () => {
-            clearTimeout(timerId)
-        }
-    }, [debounceMs, enabled, hasRestored, saveValues, values])
+    useEffect(
+        () => () => {
+            clearSaveTimer()
+        },
+        [clearSaveTimer]
+    )
+
+    const commitValues = useCallback(
+        (nextValues: TValues, saveAfterChange: boolean): boolean => {
+            if (areFormSaverValueMapsEqual(valuesRef.current, nextValues)) {
+                return false
+            }
+
+            valuesRef.current = nextValues
+            isDirtyRef.current = true
+            pendingSaveRef.current = pendingSaveRef.current || saveAfterChange
+            setValuesState(nextValues)
+            return true
+        },
+        [valuesRef]
+    )
+
+    const setValueWithSavePolicy = useCallback(
+        <K extends FormSaverFieldName<TValues>>(
+            name: K,
+            value: TValues[K],
+            saveAfterChange: boolean
+        ): boolean => {
+            const patch: Partial<TValues> = {}
+            patch[name] = value
+
+            return commitValues(
+                mergeValuesIfChanged<TValues>(valuesRef.current, patch),
+                saveAfterChange
+            )
+        },
+        [commitValues, valuesRef]
+    )
 
     const setValue = useCallback(
         <K extends FormSaverFieldName<TValues>>(name: K, value: TValues[K]): void => {
-            setValuesState((current) => {
-                const patch: Partial<TValues> = {}
-
-                patch[name] = value
-                return mergeValuesIfChanged<TValues>(current, patch)
-            })
+            setValueWithSavePolicy(name, value, true)
         },
-        []
+        [setValueWithSavePolicy]
     )
 
     const setValues = useCallback(
         (patch: Partial<TValues> | ((current: TValues) => Partial<TValues>)): void => {
-            setValuesState((current) => {
-                const resolvedPatch = typeof patch === 'function' ? patch(current) : patch
+            const current = valuesRef.current
+            const resolvedPatch = typeof patch === 'function' ? patch(current) : patch
 
-                return mergeValuesIfChanged<TValues>(current, resolvedPatch)
-            })
+            commitValues(mergeValuesIfChanged<TValues>(current, resolvedPatch), true)
         },
-        []
+        [commitValues, valuesRef]
     )
 
-    const replaceValues = useCallback((nextValues: TValues): void => {
-        setValuesState(nextValues)
-    }, [])
+    const replaceValues = useCallback(
+        (nextValues: TValues): void => {
+            commitValues(nextValues, true)
+        },
+        [commitValues]
+    )
 
-    const resetValues = useCallback((nextValues?: TValues): void => {
-        setValuesState(
-            nextValues ??
-                buildResetValues<TValues>(initialValuesRef.current, registeredDefaultsRef.current)
-        )
-    }, [])
+    const resetValues = useCallback(
+        (nextValues?: TValues): void => {
+            commitValues(
+                nextValues ??
+                    buildResetValues<TValues>(
+                        initialValuesRef.current,
+                        registeredDefaultsRef.current
+                    ),
+                true
+            )
+        },
+        [commitValues]
+    )
 
     const clearStoredValues = useCallback((): void => {
         try {
+            clearSaveTimer()
+            cancelFocusedAutosave()
             removeStoredForm(storageKey, storage)
+            isDirtyRef.current = false
+            pendingSaveRef.current = false
             setLastSavedAt(undefined)
         } catch (error) {
             onErrorRef.current?.(error)
         }
-    }, [onErrorRef, storage, storageKey])
+    }, [clearSaveTimer, cancelFocusedAutosave, onErrorRef, storage, storageKey])
+
+    const clearUrlHashValues = useCallback((): void => {
+        clearFormValuesFromUrlHash(urlHashHistoryMode)
+    }, [urlHashHistoryMode])
+
+    const restoreUrlHashFromStorage = useCallback(() => {
+        return restoreStoredUrlHash<TValues>(storageKey, {
+            storage,
+            historyMode: urlHashHistoryMode
+        })
+    }, [storage, storageKey, urlHashHistoryMode])
 
     const saveNow = useCallback((): void => {
-        saveValues(values)
-    }, [saveValues, values])
+        clearSaveTimer()
+        cancelFocusedAutosave()
+        pendingSaveRef.current = false
+        persistValues(valuesRef.current, true, true)
+    }, [clearSaveTimer, cancelFocusedAutosave, persistValues, valuesRef])
+
+    autosaveActionRef.current = saveNow
+
+    useEffect(() => {
+        if (!enabled || !hasRestored) {
+            return
+        }
+
+        return subscribeToPageUnload({
+            storageKey,
+            storage,
+            trackUrlHash: urlHashEnabled && restoreFromUrlHash,
+            save: () => {
+                if (!isDirtyRef.current && saveTimerRef.current === null) {
+                    return null
+                }
+
+                clearSaveTimer()
+                cancelFocusedAutosave()
+                pendingSaveRef.current = false
+                // Persist the final focused value, but do not mutate the address bar during
+                // unload. Browsers may reload the pre-unload URL snapshot, which would cause a
+                // visible new-hash -> stale-hash -> restored-hash flicker.
+                return persistValues(valuesRef.current, true, false)
+            },
+            ownsField: (fieldName) =>
+                Object.prototype.hasOwnProperty.call(valuesRef.current, fieldName) ||
+                Object.prototype.hasOwnProperty.call(registeredDefaultsRef.current, fieldName)
+        })
+    }, [
+        clearSaveTimer,
+        enabled,
+        cancelFocusedAutosave,
+        hasRestored,
+        persistValues,
+        restoreFromUrlHash,
+        storage,
+        storageKey,
+        urlHashEnabled,
+        valuesRef
+    ])
 
     const getValue = useCallback(
         <K extends FormSaverFieldName<TValues>>(
@@ -382,7 +635,14 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         []
     )
 
-    // Convenience binders for common controlled form controls.
+    const handleTextBlur = useCallback((): void => {
+        cancelFocusedAutosave()
+
+        if (saveEvent === 'change' && isDirtyRef.current) {
+            saveNow()
+        }
+    }, [cancelFocusedAutosave, saveEvent, saveNow])
+
     const bind = useMemo<UseFormSaverBinders<TValues>>(
         () => ({
             text: <K extends FormSaverFieldName<TValues>>(name: K) => {
@@ -392,8 +652,17 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     name,
                     value: valueToInputString(values[name]),
                     onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                        setValue(name, event.target.value as TValues[K])
-                    }
+                        const changed = setValueWithSavePolicy(
+                            name,
+                            event.target.value as TValues[K],
+                            saveEvent === 'input'
+                        )
+
+                        if (changed) {
+                            scheduleFocusedAutosave(event.currentTarget)
+                        }
+                    },
+                    onBlur: handleTextBlur
                 }
             },
 
@@ -404,8 +673,17 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     name,
                     value: valueToInputString(values[name]),
                     onChange: (event: ChangeEvent<HTMLTextAreaElement>) => {
-                        setValue(name, event.target.value as TValues[K])
-                    }
+                        const changed = setValueWithSavePolicy(
+                            name,
+                            event.target.value as TValues[K],
+                            saveEvent === 'input'
+                        )
+
+                        if (changed) {
+                            scheduleFocusedAutosave(event.currentTarget)
+                        }
+                    },
+                    onBlur: handleTextBlur
                 }
             },
 
@@ -416,7 +694,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     name,
                     checked: Boolean(values[name]),
                     onChange: (event: ChangeEvent<HTMLInputElement>) => {
-                        setValue(name, event.target.checked as TValues[K])
+                        setValueWithSavePolicy(name, event.target.checked as TValues[K], true)
                     }
                 }
             },
@@ -433,7 +711,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     checked: Object.is(values[name], optionValue),
                     onChange: (event: ChangeEvent<HTMLInputElement>) => {
                         if (event.target.checked) {
-                            setValue(name, optionValue)
+                            setValueWithSavePolicy(name, optionValue, true)
                         }
                     }
                 }
@@ -446,7 +724,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     name,
                     value: valueToSelectValue(values[name]),
                     onChange: (event: ChangeEvent<HTMLSelectElement>) => {
-                        setValue(name, event.target.value as TValues[K])
+                        setValueWithSavePolicy(name, event.target.value as TValues[K], true)
                     }
                 }
             },
@@ -459,12 +737,23 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                     multiple: true,
                     value: valueToMultiSelectValue(values[name]),
                     onChange: (event: ChangeEvent<HTMLSelectElement>) => {
-                        setValue(name, getMultiSelectValues(event.target) as TValues[K])
+                        setValueWithSavePolicy(
+                            name,
+                            getMultiSelectValues(event.target) as TValues[K],
+                            true
+                        )
                     }
                 }
             }
         }),
-        [registerDefaultValue, setValue, values]
+        [
+            handleTextBlur,
+            registerDefaultValue,
+            saveEvent,
+            scheduleFocusedAutosave,
+            setValueWithSavePolicy,
+            values
+        ]
     )
 
     return useMemo<UseFormSaverResult<TValues>>(
@@ -475,6 +764,8 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             replaceValues,
             resetValues,
             clearStoredValues,
+            clearUrlHashValues,
+            restoreUrlHashFromStorage,
             saveNow,
             getValue,
             getString,
@@ -492,6 +783,8 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             replaceValues,
             resetValues,
             clearStoredValues,
+            clearUrlHashValues,
+            restoreUrlHashFromStorage,
             saveNow,
             getValue,
             getString,

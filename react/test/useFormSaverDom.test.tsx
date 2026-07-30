@@ -8,7 +8,7 @@
 
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, waitFor } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
@@ -41,18 +41,26 @@ const DomDemo = ({
     storageKey = STORAGE_KEY,
     saveEvent = 'change',
     debounceMs = 0,
-    onSave
+    urlHash = false,
+    onSave,
+    autosaveIntervalSeconds,
+    defaultEnabled = false
 }: {
     storageKey?: string
     saveEvent?: 'change' | 'input'
     debounceMs?: number
+    urlHash?: boolean
     onSave?: () => void
+    autosaveIntervalSeconds?: number
+    defaultEnabled?: boolean
 }) => {
     const formSaver = useFormSaverDom<HTMLFormElement>({
         storageKey,
         saveEvent,
         debounceMs,
-        onSave
+        urlHash,
+        onSave,
+        autosaveIntervalSeconds
     })
 
     return (
@@ -60,7 +68,7 @@ const DomDemo = ({
             <form ref={formSaver.ref}>
                 <input name="title" defaultValue="Default title" />
                 <textarea name="notes" defaultValue="Default notes" />
-                <input name="enabled" type="checkbox" defaultChecked={false} />
+                <input name="enabled" type="checkbox" defaultChecked={defaultEnabled} />
             </form>
 
             <button type="button" onClick={() => formSaver.saveNow()}>
@@ -72,6 +80,12 @@ const DomDemo = ({
             <button type="button" onClick={() => formSaver.clearStoredValues()}>
                 clear
             </button>
+            <button type="button" onClick={() => formSaver.clearUrlHashValues()}>
+                clear hash
+            </button>
+            <button type="button" onClick={() => formSaver.restoreUrlHashFromStorage()}>
+                restore hash
+            </button>
             <output data-testid="restored">{formSaver.hasRestored ? 'yes' : 'no'}</output>
         </div>
     )
@@ -79,10 +93,12 @@ const DomDemo = ({
 
 beforeEach(() => {
     installTestBrowserStorage()
+    window.history.replaceState(null, '', '/')
 })
 
 afterEach(() => {
     cleanup()
+    vi.useRealTimers()
 })
 describe('useFormSaverDom', () => {
     it('restores stored values after mount', async () => {
@@ -109,6 +125,70 @@ describe('useFormSaverDom', () => {
         expect(getByTestId('restored').textContent).toBe('yes')
     })
 
+    it('automatically restores storage into the hash when URL synchronization is enabled', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Stored DOM title',
+            notes: 'Stored DOM notes',
+            enabled: true
+        })
+
+        const { container } = render(<DomDemo urlHash />)
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Stored DOM title'
+            )
+        })
+
+        expect(getInput(container, 'title').value).toBe('Stored DOM title')
+        expect(getInput(container, 'enabled').checked).toBe(true)
+    })
+
+    it('uses native defaultChecked to omit default checkbox state and encode deviations', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: '',
+            notes: '',
+            enabled: true
+        })
+
+        const { container } = render(<DomDemo defaultEnabled urlHash />)
+        const enabled = getInput(container, 'enabled')
+
+        await waitFor(() => {
+            expect(enabled.checked).toBe(true)
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('enabled')).toBe('0')
+        })
+
+        fireEvent.click(enabled)
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).has('enabled')).toBe(false)
+        })
+    })
+
+    it('restores DOM values from the hash before browser storage', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Storage title',
+            notes: 'Storage notes',
+            enabled: false
+        })
+        window.history.replaceState(null, '', '/#title=Hash+title&notes=Hash+notes&enabled=1')
+
+        const { container } = render(<DomDemo urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Hash title')
+        })
+
+        expect(getTextarea(container, 'notes').value).toBe('Hash notes')
+        expect(getInput(container, 'enabled').checked).toBe(true)
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
+    })
+
     it('saves native control values after a change event', async () => {
         const onSave = vi.fn()
         const { container } = render(<DomDemo onSave={onSave} />)
@@ -122,6 +202,32 @@ describe('useFormSaverDom', () => {
         expect(onSave).toHaveBeenCalled()
     })
 
+    it('autosaves a dirty focused DOM text control once per configured interval', () => {
+        vi.useFakeTimers()
+        const onSave = vi.fn()
+        const { container } = render(<DomDemo autosaveIntervalSeconds={30} onSave={onSave} />)
+        const title = getInput(container, 'title')
+
+        title.focus()
+        fireEvent.input(title, { target: { value: 'Long DOM edit' } })
+
+        act(() => {
+            vi.advanceTimersByTime(29_999)
+        })
+        expect(readStoredForm(STORAGE_KEY)).toBeNull()
+
+        act(() => {
+            vi.advanceTimersByTime(1)
+        })
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Long DOM edit')
+        expect(onSave).toHaveBeenCalledTimes(1)
+
+        act(() => {
+            vi.advanceTimersByTime(30_000)
+        })
+        expect(onSave).toHaveBeenCalledTimes(1)
+    })
+
     it('flushes unsaved input changes on beforeunload', async () => {
         const { container } = render(<DomDemo debounceMs={5000} saveEvent="input" />)
         const title = getInput(container, 'title')
@@ -133,6 +239,47 @@ describe('useFormSaverDom', () => {
 
         await waitFor(() => {
             expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Typed but not blurred')
+        })
+    })
+
+    it('restores the focused DOM value from storage when reload keeps a stale hash', async () => {
+        writeStoredForm(STORAGE_KEY, {
+            title: 'Old DOM title',
+            notes: 'Old DOM notes',
+            enabled: false
+        })
+        const oldHash = '#title=Old+DOM+title&notes=Old+DOM+notes'
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const firstRender = render(<DomDemo debounceMs={5000} urlHash />)
+        const title = getInput(firstRender.container, 'title')
+
+        await waitFor(() => {
+            expect(title.value).toBe('Old DOM title')
+        })
+
+        title.focus()
+        fireEvent.input(title, { target: { value: 'Typed DOM value before F5' } })
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Old DOM title')
+
+        window.dispatchEvent(new Event('beforeunload'))
+        expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Typed DOM value before F5')
+        expect(window.location.hash).toBe(oldHash)
+
+        firstRender.unmount()
+        window.history.replaceState(null, '', `/${oldHash}`)
+
+        const secondRender = render(<DomDemo debounceMs={5000} urlHash />)
+
+        await waitFor(() => {
+            expect(getInput(secondRender.container, 'title').value).toBe(
+                'Typed DOM value before F5'
+            )
+        })
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.slice(1)).get('title')).toBe(
+                'Typed DOM value before F5'
+            )
         })
     })
 

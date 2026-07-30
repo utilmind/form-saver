@@ -10,18 +10,43 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
+    DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
+    DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+    DEFAULT_FORM_SAVER_SAVE_EVENT
+} from './defaults'
+import {
+    collectDomFormDefaultValues,
     collectDomFormValues,
     type DomControlOptions,
     resetDomFormValues,
     restoreDomFormValues
 } from './domControls'
-import { readStoredForm, removeStoredForm, writeStoredForm } from './storage'
+import { useFocusedControlAutosave } from './focusedControlAutosave'
+import { subscribeToPageUnload } from './pageUnload'
+import { useBrowserLayoutEffect } from './reactEffects'
+import {
+    mergeFormValues,
+    prepareFormValuesForSave,
+    readStoredForm,
+    removeStoredForm,
+    writeStoredForm
+} from './storage'
 import type {
+    FormSaverMeta,
     FormSaverValues,
     StoredFormSaverData,
     UseFormSaverDomOptions,
     UseFormSaverDomResult
 } from './types'
+import {
+    clearFormValuesFromUrlHash,
+    getRegisteredUrlHashDefaultValues,
+    resolveFormRestoreSource,
+    restoreUrlHashFromStorage as restoreStoredUrlHash,
+    subscribeToUrlHashDefaultValues,
+    writeFormValuesToUrlHash
+} from './urlHash'
+import { areFormSaverValueMapsEqual, haveFormSaverValuesChanged } from './valueEquality'
 
 type LatestRef<TValue> = {
     current: TValue
@@ -58,6 +83,11 @@ const shouldSaveAfterDomEvent = (event: Event): boolean => {
     return !(target instanceof HTMLSelectElement)
 }
 
+const createRestoreMeta = (version: string | number | undefined): FormSaverMeta => ({
+    savedAt: Date.now(),
+    ...(version === undefined ? {} : { version })
+})
+
 // Hook
 export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     options: UseFormSaverDomOptions
@@ -66,9 +96,11 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         storageKey,
         storage = 'localStorage', // 'localStorage' or 'sessionStorage'
         enabled = true,
-        debounceMs = 150, // ms
-        saveEvent = 'change', // 'change' or 'input'
+        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
+        saveEvent = DEFAULT_FORM_SAVER_SAVE_EVENT,
+        autosaveIntervalSeconds = DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
         restoreOnMount = true,
+        urlHash = false,
         version,
         mergeUnknownKeys = true,
         includePasswords = false,
@@ -81,18 +113,34 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         onError
     } = options
 
+    const urlHashEnabled = urlHash === true || typeof urlHash === 'object'
+    const restoreFromUrlHash =
+        urlHash === true || (typeof urlHash === 'object' && urlHash.restore !== false)
+    const urlHashHistoryMode =
+        typeof urlHash === 'object' ? (urlHash.historyMode ?? 'replace') : 'replace'
+
     const [root, setRoot] = useState<TRoot | null>(null)
+    const rootRef = useRef<TRoot | null>(null)
     const [hasRestored, setHasRestored] = useState(false)
     const [restoredAt, setRestoredAt] = useState<number | undefined>()
     const [lastSavedAt, setLastSavedAt] = useState<number | undefined>()
     const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const isRestoringRef = useRef(false)
     const isDirtyRef = useRef(false)
+    const autosaveActionRef = useRef<() => void>(() => undefined)
     const mapBeforeSaveRef = useLatestRef(mapBeforeSave)
     const mapAfterLoadRef = useLatestRef(mapAfterLoad)
     const onRestoreRef = useLatestRef(onRestore)
     const onSaveRef = useLatestRef(onSave)
     const onErrorRef = useLatestRef(onError)
+
+    const { schedule: scheduleFocusedAutosave, cancel: cancelFocusedAutosave } =
+        useFocusedControlAutosave({
+            enabled: enabled && Boolean(root),
+            intervalSeconds: autosaveIntervalSeconds,
+            isDirty: () => isDirtyRef.current,
+            save: () => autosaveActionRef.current()
+        })
 
     const controlOptions = useMemo<DomControlOptions>(
         () => ({
@@ -104,31 +152,109 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     )
 
     const ref = useCallback((node: TRoot | null): void => {
+        rootRef.current = node
         setRoot(node)
     }, [])
 
+    useBrowserLayoutEffect(() => {
+        if (!storageKey) {
+            return
+        }
+
+        return subscribeToUrlHashDefaultValues(storageKey, storage, () => {
+            const currentRoot = rootRef.current
+
+            return currentRoot ? collectDomFormDefaultValues(currentRoot, controlOptions) : {}
+        })
+    }, [controlOptions, storage, storageKey])
+
+    const writeValuesToHash = useCallback(
+        (
+            values: Partial<FormSaverValues>,
+            saved: StoredFormSaverData<FormSaverValues> | null = null,
+            preparedValues?: Partial<FormSaverValues>
+        ): void => {
+            if (!urlHashEnabled) {
+                return
+            }
+
+            let hashValues: Partial<FormSaverValues>
+
+            if (saved) {
+                hashValues = saved.values
+            } else {
+                const valuesToSave =
+                    preparedValues ??
+                    prepareFormValuesForSave<FormSaverValues>(values, mapBeforeSaveRef.current)
+                const storedValues = mergeUnknownKeys
+                    ? (readStoredForm<FormSaverValues>(storageKey, { storage })?.values ?? {})
+                    : {}
+
+                hashValues = mergeFormValues<FormSaverValues>(
+                    storedValues,
+                    valuesToSave,
+                    mergeUnknownKeys
+                )
+            }
+
+            writeFormValuesToUrlHash<FormSaverValues>(
+                hashValues,
+                urlHashHistoryMode,
+                getRegisteredUrlHashDefaultValues<FormSaverValues>(storageKey, storage)
+            )
+        },
+        [
+            mapBeforeSaveRef,
+            mergeUnknownKeys,
+            storage,
+            storageKey,
+            urlHashEnabled,
+            urlHashHistoryMode
+        ]
+    )
+
     const saveCurrentRoot = useCallback(
-        (currentRoot: TRoot): StoredFormSaverData<FormSaverValues> | null => {
+        (currentRoot: TRoot, saveToUrlHash = true): StoredFormSaverData<FormSaverValues> | null => {
             if (!enabled || !storageKey) {
                 return null
             }
 
             try {
                 const values = collectDomFormValues(currentRoot, controlOptions)
-                const saved = writeStoredForm<FormSaverValues>(storageKey, values, {
-                    storage,
-                    version,
-                    mergeUnknownKeys,
-                    mapBeforeSave: mapBeforeSaveRef.current
-                })
+                const valuesToSave = prepareFormValuesForSave<FormSaverValues>(
+                    values,
+                    mapBeforeSaveRef.current
+                )
+                const storedBeforeSave = readStoredForm<FormSaverValues>(storageKey, { storage })
+                const shouldWriteStorage =
+                    !storedBeforeSave ||
+                    (mergeUnknownKeys
+                        ? haveFormSaverValuesChanged(valuesToSave, storedBeforeSave.values)
+                        : !areFormSaverValueMapsEqual(valuesToSave, storedBeforeSave.values))
+                const newlySaved = shouldWriteStorage
+                    ? writeStoredForm<FormSaverValues>(storageKey, valuesToSave, {
+                          storage,
+                          version,
+                          mergeUnknownKeys
+                      })
+                    : null
+                const currentStored = newlySaved ?? storedBeforeSave
 
-                if (saved) {
-                    isDirtyRef.current = false
-                    setLastSavedAt(saved.meta.savedAt)
-                    onSaveRef.current?.(saved.values, saved.meta)
+                if (saveToUrlHash) {
+                    writeValuesToHash(values, newlySaved, valuesToSave)
                 }
 
-                return saved
+                if (currentStored) {
+                    isDirtyRef.current = false
+                    cancelFocusedAutosave()
+                }
+
+                if (newlySaved) {
+                    setLastSavedAt(newlySaved.meta.savedAt)
+                    onSaveRef.current?.(newlySaved.values, newlySaved.meta)
+                }
+
+                return currentStored
             } catch (error) {
                 onErrorRef.current?.(error)
                 return null
@@ -137,13 +263,15 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         [
             controlOptions,
             enabled,
+            cancelFocusedAutosave,
             mapBeforeSaveRef,
             mergeUnknownKeys,
             onErrorRef,
             onSaveRef,
             storage,
             storageKey,
-            version
+            version,
+            writeValuesToHash
         ]
     )
 
@@ -154,14 +282,37 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             }
 
             try {
-                const stored = readStoredForm<FormSaverValues>(storageKey, { storage })
-                if (!stored) {
+                const initialValues = collectDomFormDefaultValues(currentRoot, controlOptions)
+                const restoreSource =
+                    urlHashEnabled && restoreFromUrlHash && typeof window !== 'undefined'
+                        ? resolveFormRestoreSource<FormSaverValues>(
+                              storageKey,
+                              window.location.hash,
+                              initialValues,
+                              { storage }
+                          )
+                        : (() => {
+                              const stored = readStoredForm<FormSaverValues>(storageKey, {
+                                  storage
+                              })
+
+                              return {
+                                  source: stored ? ('storage' as const) : null,
+                                  values: stored?.values ?? null,
+                                  stored
+                              }
+                          })()
+                const sourceValues = restoreSource.values
+
+                if (!sourceValues) {
+                    writeValuesToHash(initialValues)
                     return null
                 }
 
+                const meta = restoreSource.stored?.meta ?? createRestoreMeta(version)
                 const loadedValues = mapAfterLoadRef.current
-                    ? mapAfterLoadRef.current(stored.values, stored.meta)
-                    : stored.values
+                    ? mapAfterLoadRef.current(sourceValues, meta)
+                    : sourceValues
 
                 if (!loadedValues) {
                     return null
@@ -174,20 +325,58 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                     isRestoringRef.current = false
                 }
 
-                setRestoredAt(stored.meta.savedAt)
-                onRestoreRef.current?.(loadedValues, stored.meta)
+                const completeValues = collectDomFormValues(currentRoot, controlOptions)
 
-                return {
+                setRestoredAt(meta.savedAt)
+                onRestoreRef.current?.(loadedValues, meta)
+
+                let result: StoredFormSaverData<FormSaverValues> = {
                     values: loadedValues,
-                    meta: stored.meta
+                    meta
                 }
+
+                if (restoreSource.source === 'hash') {
+                    const saved = writeStoredForm<FormSaverValues>(storageKey, completeValues, {
+                        storage,
+                        version,
+                        mergeUnknownKeys,
+                        mapBeforeSave: mapBeforeSaveRef.current
+                    })
+
+                    writeValuesToHash(completeValues, saved)
+
+                    if (saved) {
+                        result = saved
+                        setLastSavedAt(saved.meta.savedAt)
+                        onSaveRef.current?.(saved.values, saved.meta)
+                    }
+                } else {
+                    writeValuesToHash(completeValues)
+                }
+
+                return result
             } catch (error) {
                 isRestoringRef.current = false
                 onErrorRef.current?.(error)
                 return null
             }
         },
-        [controlOptions, enabled, mapAfterLoadRef, onErrorRef, onRestoreRef, storage, storageKey]
+        [
+            controlOptions,
+            enabled,
+            mapAfterLoadRef,
+            mapBeforeSaveRef,
+            mergeUnknownKeys,
+            onErrorRef,
+            onRestoreRef,
+            onSaveRef,
+            restoreFromUrlHash,
+            storage,
+            storageKey,
+            urlHashEnabled,
+            version,
+            writeValuesToHash
+        ]
     )
 
     const saveNow = useCallback((): StoredFormSaverData<FormSaverValues> | null => {
@@ -196,8 +385,11 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         }
 
         clearTimer(timerRef)
+        cancelFocusedAutosave()
         return saveCurrentRoot(root)
-    }, [root, saveCurrentRoot])
+    }, [cancelFocusedAutosave, root, saveCurrentRoot])
+
+    autosaveActionRef.current = saveNow
 
     const scheduleSave = useCallback(
         (currentRoot: TRoot): void => {
@@ -235,12 +427,24 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     const clearStoredValues = useCallback((): void => {
         try {
             clearTimer(timerRef)
+            cancelFocusedAutosave()
             removeStoredForm(storageKey, storage)
             setLastSavedAt(undefined)
         } catch (error) {
             onErrorRef.current?.(error)
         }
-    }, [onErrorRef, storage, storageKey])
+    }, [cancelFocusedAutosave, onErrorRef, storage, storageKey])
+
+    const clearUrlHashValues = useCallback((): void => {
+        clearFormValuesFromUrlHash(urlHashHistoryMode)
+    }, [urlHashHistoryMode])
+
+    const restoreUrlHashFromStorage = useCallback(() => {
+        return restoreStoredUrlHash<FormSaverValues>(storageKey, {
+            storage,
+            historyMode: urlHashHistoryMode
+        })
+    }, [storage, storageKey, urlHashHistoryMode])
 
     const getValues = useCallback((): FormSaverValues => {
         return root ? collectDomFormValues(root, controlOptions) : {}
@@ -251,14 +455,19 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             return
         }
 
-        if (!enabled || !restoreOnMount) {
+        if (!enabled) {
             setHasRestored(true)
             return
         }
 
-        restoreCurrentRoot(root)
+        if (restoreOnMount) {
+            restoreCurrentRoot(root)
+        } else {
+            writeValuesToHash(collectDomFormValues(root, controlOptions))
+        }
+
         setHasRestored(true)
-    }, [enabled, restoreCurrentRoot, restoreOnMount, root])
+    }, [controlOptions, enabled, restoreCurrentRoot, restoreOnMount, root, writeValuesToHash])
 
     useEffect(() => {
         if (!root || !enabled) {
@@ -271,6 +480,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             }
 
             isDirtyRef.current = true
+            scheduleFocusedAutosave(event.target instanceof Element ? event.target : null)
 
             if (saveEvent === 'input' && shouldSaveAfterDomEvent(event)) {
                 scheduleSave(root)
@@ -296,27 +506,43 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             root.removeEventListener('input', handleDomInput)
             root.removeEventListener('change', handleDomChange)
             clearTimer(timerRef)
+            cancelFocusedAutosave()
         }
-    }, [enabled, root, saveEvent, scheduleSave])
+    }, [cancelFocusedAutosave, enabled, root, saveEvent, scheduleFocusedAutosave, scheduleSave])
 
     useEffect(() => {
-        if (!root || !enabled || typeof window === 'undefined') {
+        if (!root || !enabled) {
             return
         }
 
-        const handleBeforeUnload = (): void => {
-            if (isDirtyRef.current || timerRef.current !== null) {
+        return subscribeToPageUnload({
+            storageKey,
+            storage,
+            trackUrlHash: urlHashEnabled && restoreFromUrlHash,
+            save: () => {
+                if (!isDirtyRef.current && timerRef.current === null) {
+                    return null
+                }
+
                 clearTimer(timerRef)
-                saveCurrentRoot(root)
-            }
-        }
-
-        window.addEventListener('beforeunload', handleBeforeUnload)
-
-        return () => {
-            window.removeEventListener('beforeunload', handleBeforeUnload)
-        }
-    }, [enabled, root, saveCurrentRoot])
+                cancelFocusedAutosave()
+                // Keep the current address bar unchanged while unloading. The browser may
+                // reload an earlier URL snapshot even after replaceState, producing a visible
+                // hash rollback before FormSaver restores the latest stored value.
+                return saveCurrentRoot(root, false)
+            },
+            ownsField: (_fieldName, activeElement) => root.contains(activeElement)
+        })
+    }, [
+        enabled,
+        cancelFocusedAutosave,
+        restoreFromUrlHash,
+        root,
+        saveCurrentRoot,
+        storage,
+        storageKey,
+        urlHashEnabled
+    ])
 
     return useMemo<UseFormSaverDomResult<TRoot>>(
         () => ({
@@ -326,6 +552,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             restoreNow,
             resetValues,
             clearStoredValues,
+            clearUrlHashValues,
+            restoreUrlHashFromStorage,
             hasRestored,
             restoredAt,
             lastSavedAt
@@ -337,6 +565,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             restoreNow,
             resetValues,
             clearStoredValues,
+            clearUrlHashValues,
+            restoreUrlHashFromStorage,
             hasRestored,
             restoredAt,
             lastSavedAt

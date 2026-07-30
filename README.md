@@ -25,7 +25,9 @@ The code in `react/` is a reusable React hook package. It is designed around con
 - work safely in Next.js without touching browser storage during server-side rendering;
 - preserve unknown stored fields when several related forms share the same `storageKey`;
 - store all React values as one readable JSON envelope per `storageKey`;
-- provide typed helpers for common controls: text inputs, textarea, checkbox, radio, select, and multi-select.
+- provide typed helpers for common controls: text inputs, textarea, checkbox, radio, select, and multi-select;
+- synchronously flush a pending focused-field edit during page reload and recover it even if the browser reloads with the previous hash;
+- generate compact URL hashes that omit empty values and default checkbox state, using `1` / `0` for checkbox deviations.
 
 Basic example:
 
@@ -54,6 +56,9 @@ export function SettingsPage() {
   const form = useFormSaver<SettingsForm>({
     storageKey: "settings-form",
     initialValues,
+    saveEvent: 'change',
+    autosaveIntervalSeconds: 30,
+    urlHash: true,
   });
 
   return (
@@ -71,7 +76,7 @@ export function SettingsPage() {
 
 See [`react/README.md`](./react/README.md) for the React package API draft.
 
-The React storage format is intentionally independent from the legacy jQuery plugin storage format.
+The React storage format is intentionally independent from the legacy jQuery plugin storage format. Controlled text binders and DOM scopes save on blur/change by default, with a 30-second focused-control autosave fallback. Set `saveEvent: 'input'` to opt into save-while-typing behavior.
 
 React package checks:
 
@@ -108,7 +113,7 @@ npm run demo:dev
 
 The old jQuery plugin remains under `jquery/`.
 
-It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization.
+It supports classic ES5-era projects and can save/restore form fields with `localStorage`, `sessionStorage`, and optional URL hash synchronization. The React package supports automatic URL hash synchronization through `urlHash: true` in `useFormSaver`, `useFormSaverDom`, and `FormSaverScope`.
 
 See [`jquery/README.md`](./jquery/README.md) for legacy usage.
 
