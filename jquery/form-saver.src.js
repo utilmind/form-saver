@@ -381,12 +381,21 @@
                         // If everything else are the same, then use storage. If something (anything) is different, use #hash.
 
                         var isDifferent,
-                            i, s,
-                            m = hashLine.match(new RegExp('(&' + (keep1stHash ? '' : '|^') + ')([^\\s=]+)=([^&$]+)', 'g')); // ATTN! \\s, since this is combined string! It's used as \s in expression.
+                            storedValue,
+                            match,
+                            hashParamPattern = new RegExp(
+                                keep1stHash
+                                    ? '&([^\\s=]+)=([^&$]+)' // ATTN! \\s, since this is combined string! It's used as \s in expression.
+                                    : '(?:^|&)([^\\s=]+)=([^&$]+)',
+                                'g');
 
-                        for (i = 0; i < m.length; ++i) {
-                            s = m[i].slice(1).split('=');
-                            if ((lastFocusedField !== s[0]) && (decodeURIComponent(s[1]) !== loadStoredItem(s[0]))) {
+                        // RegExp.exec() keeps the parameter name in a capture group even when
+                        // the first parameter starts at the beginning of the hash line.
+                        while ((match = hashParamPattern.exec(hashLine))) {
+                            storedValue = loadStoredItem(match[1]);
+                            if ((lastFocusedField !== match[1]) &&
+                                (decodeURIComponent(match[2]) !==
+                                    (null === storedValue ? null : String(storedValue)))) {
                                 isDifferent = 1;
                                 break;
                             }
@@ -778,7 +787,7 @@
                     noWait = 1;
                     saveForm($form, options, 1); // 1 (true) means triggered from `window.beforeunload` event.
 
-                    // We saving last focused element name. If it was changed, we has time to update the localStorage, BUT the #hash still remains the same on page refresh.
+                    // We saving last focused element name. If it was changed, we have time to update the localStorage, BUT the #hash still remains the same on page refresh.
                     // This value will be used to check difference between the #hash and values in storage, to determinate
                     // whether it was just refresh (so value must be restored from storage), or navigation to new URL (so we should totally respect full #hash and ignore storage).
                     //
