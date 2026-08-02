@@ -381,12 +381,21 @@
                         // If everything else are the same, then use storage. If something (anything) is different, use #hash.
 
                         var isDifferent,
-                            i, s,
-                            m = hashLine.match(new RegExp('(&' + (keep1stHash ? '' : '|^') + ')([^\\s=]+)=([^&$]+)', 'g')); // ATTN! \\s, since this is combined string! It's used as \s in expression.
+                            storedValue,
+                            match,
+                            hashParamPattern = new RegExp(
+                                keep1stHash
+                                    ? '&([^\\s=]+)=([^&$]+)' // ATTN! \\s, since this is combined string! It's used as \s in expression.
+                                    : '(?:^|&)([^\\s=]+)=([^&$]+)',
+                                'g');
 
-                        for (i = 0; i < m.length; ++i) {
-                            s = m[i].slice(1).split('=');
-                            if ((lastFocusedField !== s[0]) && (decodeURIComponent(s[1]) !== loadStoredItem(s[0]))) {
+                        // RegExp.exec() keeps the parameter name in a capture group even when
+                        // the first parameter starts at the beginning of the hash line.
+                        while ((match = hashParamPattern.exec(hashLine))) {
+                            storedValue = loadStoredItem(match[1]);
+                            if ((lastFocusedField !== match[1]) &&
+                                (decodeURIComponent(match[2]) !==
+                                    (null === storedValue ? null : String(storedValue)))) {
                                 isDifferent = 1;
                                 break;
                             }
@@ -776,9 +785,18 @@
 
                 window.addEventListener('beforeunload', function(focusedEl) { // focusedEl is just declaration of variable
                     noWait = 1;
-                    saveForm($form, options, 1); // 1 (true) means triggered from `window.beforeunload` event.
 
-                    // We saving last focused element name. If it was changed, we has time to update the localStorage, BUT the #hash still remains the same on page refresh.
+                    // Flush the latest value to storage, but do not rewrite the address bar while unloading.
+                    // Browsers may reload the URL snapshot captured before beforeunload, which otherwise produces
+                    // a visible new-hash -> stale-hash -> restored-hash flicker on F5.
+                    // Hash-only mode has no storage fallback, so it must keep its original behavior.
+                    saveForm($form,
+                        (0 < options.noUseStorage) || options.noUseHash
+                            ? options
+                            : $.extend({}, options, {noUseHash: 1}));
+
+                    // We saving last focused element name. The fresh value is already in storage, while the #hash
+                    // intentionally remains unchanged during page unload.
                     // This value will be used to check difference between the #hash and values in storage, to determinate
                     // whether it was just refresh (so value must be restored from storage), or navigation to new URL (so we should totally respect full #hash and ignore storage).
                     //
