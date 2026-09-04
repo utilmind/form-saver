@@ -181,9 +181,7 @@ describe('URL hash form values', () => {
         const filterTail = window.location.hash.slice(window.location.hash.indexOf('&'))
         window.history.replaceState(null, '', `/#39.41,-84.20x39.32,-84.40${filterTail}`)
 
-        expect(window.location.hash).toBe(
-            '#39.41,-84.20x39.32,-84.40&searchQuery=filters+first'
-        )
+        expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40&searchQuery=filters+first')
     })
 
     it('restores storage into the hash without replacing a preserved first hash part', () => {
