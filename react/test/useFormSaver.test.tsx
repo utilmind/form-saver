@@ -457,8 +457,6 @@ describe('useFormSaver', () => {
         })
     })
 
-
-
     it('keeps an external first hash part while controlled values restore and change', async () => {
         window.history.replaceState(
             null,
@@ -466,9 +464,7 @@ describe('useFormSaver', () => {
             '/#39.41,-84.20x39.32,-84.40&title=Hash+title&enabled=1'
         )
 
-        const { container } = render(
-            <ControlledDemo urlHash={{ keepFirstHashPart: true }} />
-        )
+        const { container } = render(<ControlledDemo urlHash={{ keepFirstHashPart: true }} />)
 
         await waitFor(() => {
             expect(getInput(container, 'title').value).toBe('Hash title')
@@ -480,9 +476,9 @@ describe('useFormSaver', () => {
         fireEvent.blur(title)
 
         await waitFor(() => {
-            expect(new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')).toBe(
-                'Changed title'
-            )
+            expect(
+                new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')
+            ).toBe('Changed title')
         })
         expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
     })

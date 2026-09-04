@@ -190,8 +190,6 @@ describe('useFormSaverDom', () => {
         expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
     })
 
-
-
     it('keeps an external first hash part while DOM values restore and change', async () => {
         window.history.replaceState(
             null,
@@ -209,9 +207,9 @@ describe('useFormSaverDom', () => {
         fireEvent.change(getInput(container, 'title'), { target: { value: 'Changed DOM title' } })
 
         await waitFor(() => {
-            expect(new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')).toBe(
-                'Changed DOM title'
-            )
+            expect(
+                new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')
+            ).toBe('Changed DOM title')
         })
         expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
     })

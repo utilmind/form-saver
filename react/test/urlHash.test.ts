@@ -141,12 +141,7 @@ describe('URL hash form values', () => {
         window.history.replaceState(null, '', '/#39.41,-84.20x39.32,-84.40&searchQuery=existing')
 
         expect(
-            readFormValuesFromUrlHash<HashSettings>(
-                window.location.hash,
-                TEMPLATE,
-                true,
-                true
-            )
+            readFormValuesFromUrlHash<HashSettings>(window.location.hash, TEMPLATE, true, true)
         ).toEqual({
             searchQuery: 'existing',
             enabled: false,
