@@ -53,6 +53,23 @@ describe('URL hash form values', () => {
         ).toBe('#searchQuery=lathe+shop&enabled=1&resultsPerPage=50&tags=alpha&tags=beta')
     })
 
+    it('serializes arrays into one readable parameter with a configured separator', () => {
+        const hash = serializeFormValuesToUrlHash<HashSettings>(
+            { tags: ['alpha', 'beta,gamma'] },
+            TEMPLATE,
+            ','
+        )
+
+        expect(hash).toBe('#tags=alpha,beta%2Cgamma')
+        expect(readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, ',')).toEqual({
+            searchQuery: '',
+            enabled: false,
+            resultsPerPage: 20,
+            tags: ['alpha', 'beta,gamma'],
+            notes: ''
+        })
+    })
+
     it('omits empty values and checkbox states that match their defaults', () => {
         expect(
             serializeFormValuesToUrlHash<HashSettings>(
@@ -164,6 +181,30 @@ describe('URL hash form values', () => {
 
         expect(clearFormValuesFromUrlHash('replace', true)).toBe(true)
         expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40')
+    })
+
+    it('combines a preserved first hash part with separator-delimited arrays', () => {
+        window.history.replaceState(null, '', '/#39.41,-84.20x39.32,-84.40')
+
+        expect(
+            writeFormValuesToUrlHash<HashSettings>(
+                { tags: ['alpha', 'beta'] },
+                'replace',
+                TEMPLATE,
+                true,
+                ','
+            )
+        ).toBe(true)
+        expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40&tags=alpha,beta')
+        expect(
+            readFormValuesFromUrlHash<HashSettings>(
+                window.location.hash,
+                TEMPLATE,
+                false,
+                true,
+                ','
+            )?.tags
+        ).toEqual(['alpha', 'beta'])
     })
 
     it('reserves an empty first hash slot until an external hash owner writes its prefix', () => {

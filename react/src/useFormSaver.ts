@@ -200,6 +200,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
     const urlHashHistoryMode =
         typeof urlHash === 'object' ? (urlHash.historyMode ?? 'replace') : 'replace'
     const keepFirstHashPart = typeof urlHash === 'object' && urlHash.keepFirstHashPart === true
+    const urlHashArraySeparator = typeof urlHash === 'object' ? urlHash.arraySeparator : undefined
 
     const emptyInitialValuesRef = useRef<TValues>({} as TValues)
     const initialValuesRef = useRef<TValues>(initialValues ?? emptyInitialValuesRef.current)
@@ -274,7 +275,8 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                           {
                               storage,
                               restoreUnknownKeys,
-                              keepFirstHashPart
+                              keepFirstHashPart,
+                              arraySeparator: urlHashArraySeparator
                           }
                       )
                     : (() => {
@@ -336,6 +338,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         restoreFromUrlHash,
         restoreUnknownKeys,
         keepFirstHashPart,
+        urlHashArraySeparator,
         storage,
         storageKey,
         urlHashEnabled,
@@ -384,7 +387,8 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
                         hashValues,
                         urlHashHistoryMode,
                         getRegisteredUrlHashDefaultValues<TValues>(storageKey, storage),
-                        keepFirstHashPart
+                        keepFirstHashPart,
+                        urlHashArraySeparator
                     )
                 }
 
@@ -416,6 +420,7 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
             urlHashEnabled,
             urlHashHistoryMode,
             keepFirstHashPart,
+            urlHashArraySeparator,
             version
         ]
     )
@@ -551,9 +556,10 @@ export const useFormSaver = <TValues extends FormSaverValuesConstraint<TValues>>
         return restoreStoredUrlHash<TValues>(storageKey, {
             storage,
             historyMode: urlHashHistoryMode,
-            keepFirstHashPart
+            keepFirstHashPart,
+            arraySeparator: urlHashArraySeparator
         })
-    }, [keepFirstHashPart, storage, storageKey, urlHashHistoryMode])
+    }, [keepFirstHashPart, storage, storageKey, urlHashArraySeparator, urlHashHistoryMode])
 
     const saveNow = useCallback((): void => {
         clearSaveTimer()

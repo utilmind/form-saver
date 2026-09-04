@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-09-04]: Compact URL hash arrays
+
+### Added
+
+- Added `urlHash.arraySeparator` to `useFormSaver`, `useFormSaverDom`, and `FormSaverScope` so arrays can be serialized into one readable hash parameter such as `statuses=ERROR,WARNING`.
+- Added `arraySeparator` to the standalone `restoreUrlHashFromStorage()` options.
+- Added URL hash and hook tests covering separator-delimited arrays, encoded separators inside individual values, and coexistence with `keepFirstHashPart`.
+
+### Changed
+
+- Separator-delimited array items are encoded individually before joining, preserving literal separator characters that belong to an item while keeping the configured separator readable in the address bar.
+- Repeated array parameters remain the default when `arraySeparator` is not configured.
+
 ## [2026-09-04]: Shared first URL hash segment
 
 ### Added

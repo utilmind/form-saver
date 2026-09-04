@@ -1,9 +1,10 @@
 /**
  * URL hash adapter for readable form-state synchronization.
  *
- * Values are serialized as URLSearchParams after the # character. Primitive
- * values use one name=value pair, while arrays use repeated parameters. Empty
- * values are omitted, and boolean checkbox state is encoded as compact 1/0.
+ * Values are serialized as URLSearchParams-style pairs after the # character. Primitive
+ * values use one name=value pair. Arrays use repeated parameters by default or one
+ * separator-delimited parameter when configured. Empty values are omitted, and boolean
+ * checkbox state is encoded as compact 1/0.
  *
  * Developer notes:
  * - Keep this module free of React dependencies so it stays easy to test.
@@ -102,6 +103,50 @@ const getFirstHashPart = (hash: string): string => {
 const getHashSearchParams = (hash: string, keepFirstHashPart = false): URLSearchParams =>
     new URLSearchParams(getFormOwnedHashBody(hash, keepFirstHashPart))
 
+/** Encode one URLSearchParams component without adding a parameter name. */
+const encodeHashParamComponent = (value: string): string => {
+    const params = new URLSearchParams()
+    params.set('value', value)
+    return params.toString().slice('value='.length)
+}
+
+/** Decode one raw URLSearchParams component without losing encoded array separators. */
+const decodeHashParamComponent = (value: string): string =>
+    new URLSearchParams(`value=${value}`).get('value') ?? ''
+
+/** Read raw encoded values for one hash parameter. */
+const getRawHashParamValues = (hash: string, name: string, keepFirstHashPart = false): string[] => {
+    const encodedName = encodeHashParamComponent(name)
+    const valuePrefix = `${encodedName}=`
+
+    return getFormOwnedHashBody(hash, keepFirstHashPart)
+        .split('&')
+        .flatMap((part) => {
+            if (part === encodedName) {
+                return ['']
+            }
+
+            return part.startsWith(valuePrefix) ? [part.slice(valuePrefix.length)] : []
+        })
+}
+
+/** Read one array parameter while preserving separators encoded inside individual values. */
+const getSeparatedArrayParamValues = (
+    hash: string,
+    name: string,
+    keepFirstHashPart: boolean,
+    arraySeparator: string
+): string[] =>
+    getRawHashParamValues(hash, name, keepFirstHashPart).flatMap((rawValue) =>
+        rawValue.split(arraySeparator).map(decodeHashParamComponent)
+    )
+
+const serializeHashParam = (name: string, value: string): string => {
+    const params = new URLSearchParams()
+    params.set(name, value)
+    return params.toString()
+}
+
 const serializePrimitive = (value: FormSaverPrimitive): string => {
     if (typeof value === 'boolean') {
         return value ? '1' : '0'
@@ -192,7 +237,8 @@ export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstra
     hash: string,
     templateValues: TValues,
     restoreUnknownKeys = false,
-    keepFirstHashPart = false
+    keepFirstHashPart = false,
+    arraySeparator?: string
 ): Partial<TValues> | null => {
     if (!hash || hash === '#') {
         return null
@@ -208,7 +254,12 @@ export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstra
         }
 
         hasOwnedValue = true
-        const parsedValue = parseValueByTemplate(params.getAll(key), templateValues[key])
+        const templateValue = templateValues[key]
+        const hashValues =
+            arraySeparator && Array.isArray(templateValue)
+                ? getSeparatedArrayParamValues(hash, key, keepFirstHashPart, arraySeparator)
+                : params.getAll(key)
+        const parsedValue = parseValueByTemplate(hashValues, templateValue)
 
         if (parsedValue !== undefined) {
             values[key] = parsedValue as TValues[typeof key]
@@ -259,6 +310,7 @@ interface ResolveFormRestoreSourceOptions {
     storage?: BrowserStorageName
     restoreUnknownKeys?: boolean
     keepFirstHashPart?: boolean
+    arraySeparator?: string
 }
 
 export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstraint<TValues>>(
@@ -272,7 +324,8 @@ export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstrai
         hash,
         templateValues,
         options.restoreUnknownKeys,
-        options.keepFirstHashPart
+        options.keepFirstHashPart,
+        options.arraySeparator
     )
     const stored = readStoredForm<TValues>(storageKey, { storage: storageName })
 
@@ -310,9 +363,10 @@ export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstrai
 
 export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
-    defaultValues: Partial<TValues> = {}
+    defaultValues: Partial<TValues> = {},
+    arraySeparator?: string
 ): string => {
-    const params = new URLSearchParams()
+    const serializedParams: string[] = []
 
     for (const key in values) {
         const value = values[key]
@@ -322,11 +376,22 @@ export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesCons
         }
 
         if (Array.isArray(value)) {
-            for (let index = 0; index < value.length; ++index) {
-                const item = value[index]
+            const serializedItems = value
+                .filter((item) => !isEmptyHashPrimitive(item))
+                .map((item) => serializePrimitive(item))
 
-                if (!isEmptyHashPrimitive(item)) {
-                    params.append(key, serializePrimitive(item))
+            if (serializedItems.length === 0) {
+                continue
+            }
+
+            if (arraySeparator) {
+                const encodedItems = serializedItems.map(encodeHashParamComponent)
+                serializedParams.push(
+                    `${encodeHashParamComponent(key)}=${encodedItems.join(arraySeparator)}`
+                )
+            } else {
+                for (const item of serializedItems) {
+                    serializedParams.push(serializeHashParam(key, item))
                 }
             }
             continue
@@ -345,10 +410,10 @@ export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesCons
             continue
         }
 
-        params.set(key, serializePrimitive(value))
+        serializedParams.push(serializeHashParam(key, serializePrimitive(value)))
     }
 
-    const serialized = params.toString()
+    const serialized = serializedParams.join('&')
     return serialized ? `#${serialized}` : ''
 }
 
@@ -400,10 +465,11 @@ export const writeFormValuesToUrlHash = <TValues extends FormSaverValuesConstrai
     values: Partial<TValues>,
     historyMode: FormSaverUrlHashHistoryMode = 'replace',
     defaultValues: Partial<TValues> = {},
-    keepFirstHashPart = false
+    keepFirstHashPart = false,
+    arraySeparator?: string
 ): boolean =>
     updateBrowserHash(
-        serializeFormValuesToUrlHash(values, defaultValues),
+        serializeFormValuesToUrlHash(values, defaultValues, arraySeparator),
         historyMode,
         keepFirstHashPart
     )
@@ -430,7 +496,8 @@ export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstra
         stored.values,
         options.historyMode,
         defaultValues,
-        options.keepFirstHashPart
+        options.keepFirstHashPart,
+        options.arraySeparator
     )
         ? stored
         : null

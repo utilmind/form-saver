@@ -70,6 +70,10 @@ const DomDemo = ({
                 <input name="title" defaultValue="Default title" />
                 <textarea name="notes" defaultValue="Default notes" />
                 <input name="enabled" type="checkbox" defaultChecked={defaultEnabled} />
+                <select name="tags" multiple defaultValue={[]}>
+                    <option value="a">A</option>
+                    <option value="b">B</option>
+                </select>
             </form>
 
             <button type="button" onClick={() => formSaver.saveNow()}>
@@ -188,6 +192,23 @@ describe('useFormSaverDom', () => {
         expect(getTextarea(container, 'notes').value).toBe('Hash notes')
         expect(getInput(container, 'enabled').checked).toBe(true)
         expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
+    })
+
+    it('uses the configured array separator for DOM multi-select values', async () => {
+        const { container } = render(<DomDemo urlHash={{ arraySeparator: ',' }} />)
+        const tags = container.querySelector<HTMLSelectElement>('select[name="tags"]')
+
+        if (!tags) {
+            throw new Error('Missing tags select')
+        }
+
+        tags.options[0].selected = true
+        tags.options[1].selected = true
+        fireEvent.change(tags)
+
+        await waitFor(() => {
+            expect(window.location.hash).toContain('tags=a,b')
+        })
     })
 
     it('keeps an external first hash part while DOM values restore and change', async () => {

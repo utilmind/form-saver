@@ -457,6 +457,18 @@ describe('useFormSaver', () => {
         })
     })
 
+    it('uses the configured array separator for controlled array values', async () => {
+        const { container } = render(<ControlledDemo urlHash={{ arraySeparator: ',' }} />)
+        const tags = getSelect(container, 'tags')
+        tags.options[0].selected = true
+        tags.options[1].selected = true
+        fireEvent.change(tags)
+
+        await waitFor(() => {
+            expect(window.location.hash).toContain('tags=a,b')
+        })
+    })
+
     it('keeps an external first hash part while controlled values restore and change', async () => {
         window.history.replaceState(
             null,
