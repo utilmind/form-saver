@@ -12,6 +12,7 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
+import type { FormSaverUrlHashOptions } from '../src/types'
 import { useFormSaverDom } from '../src/useFormSaverDom'
 import { installTestBrowserStorage } from './testStorage'
 
@@ -49,7 +50,7 @@ const DomDemo = ({
     storageKey?: string
     saveEvent?: 'change' | 'input'
     debounceMs?: number
-    urlHash?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     onSave?: () => void
     autosaveIntervalSeconds?: number
     defaultEnabled?: boolean
@@ -187,6 +188,32 @@ describe('useFormSaverDom', () => {
         expect(getTextarea(container, 'notes').value).toBe('Hash notes')
         expect(getInput(container, 'enabled').checked).toBe(true)
         expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
+    })
+
+
+
+    it('keeps an external first hash part while DOM values restore and change', async () => {
+        window.history.replaceState(
+            null,
+            '',
+            '/#39.41,-84.20x39.32,-84.40&title=Hash+DOM+title&enabled=1'
+        )
+
+        const { container } = render(<DomDemo urlHash={{ keepFirstHashPart: true }} />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Hash DOM title')
+        })
+        expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
+
+        fireEvent.change(getInput(container, 'title'), { target: { value: 'Changed DOM title' } })
+
+        await waitFor(() => {
+            expect(new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')).toBe(
+                'Changed DOM title'
+            )
+        })
+        expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
     })
 
     it('saves native control values after a change event', async () => {

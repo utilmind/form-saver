@@ -76,8 +76,31 @@ export const getRegisteredUrlHashDefaultValues = <
     return defaultValues
 }
 
-const getHashSearchParams = (hash: string): URLSearchParams =>
-    new URLSearchParams(hash.charAt(0) === '#' ? hash.slice(1) : hash)
+const stripLeadingHashMarker = (hash: string): string =>
+    hash.charAt(0) === '#' ? hash.slice(1) : hash
+
+/** Return the hash portion owned by FormSaver, excluding an optional opaque first segment. */
+const getFormOwnedHashBody = (hash: string, keepFirstHashPart: boolean): string => {
+    const hashBody = stripLeadingHashMarker(hash)
+
+    if (!keepFirstHashPart) {
+        return hashBody
+    }
+
+    const delimiterIndex = hashBody.indexOf('&')
+    return delimiterIndex === -1 ? '' : hashBody.slice(delimiterIndex + 1)
+}
+
+/** Return the opaque first hash segment that another component owns. */
+const getFirstHashPart = (hash: string): string => {
+    const hashBody = stripLeadingHashMarker(hash)
+    const delimiterIndex = hashBody.indexOf('&')
+
+    return delimiterIndex === -1 ? hashBody : hashBody.slice(0, delimiterIndex)
+}
+
+const getHashSearchParams = (hash: string, keepFirstHashPart = false): URLSearchParams =>
+    new URLSearchParams(getFormOwnedHashBody(hash, keepFirstHashPart))
 
 const serializePrimitive = (value: FormSaverPrimitive): string => {
     if (typeof value === 'boolean') {
@@ -168,13 +191,14 @@ const getOmittedHashValue = (
 export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     hash: string,
     templateValues: TValues,
-    restoreUnknownKeys = false
+    restoreUnknownKeys = false,
+    keepFirstHashPart = false
 ): Partial<TValues> | null => {
     if (!hash || hash === '#') {
         return null
     }
 
-    const params = getHashSearchParams(hash)
+    const params = getHashSearchParams(hash, keepFirstHashPart)
     const values: Partial<TValues> = {}
     let hasOwnedValue = false
 
@@ -234,6 +258,7 @@ export type FormRestoreSource<TValues extends FormSaverValuesConstraint<TValues>
 interface ResolveFormRestoreSourceOptions {
     storage?: BrowserStorageName
     restoreUnknownKeys?: boolean
+    keepFirstHashPart?: boolean
 }
 
 export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstraint<TValues>>(
@@ -246,7 +271,8 @@ export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstrai
     const hashValues = readFormValuesFromUrlHash<TValues>(
         hash,
         templateValues,
-        options.restoreUnknownKeys
+        options.restoreUnknownKeys,
+        options.keepFirstHashPart
     )
     const stored = readStoredForm<TValues>(storageKey, { storage: storageName })
 
@@ -326,12 +352,34 @@ export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesCons
     return serialized ? `#${serialized}` : ''
 }
 
-const updateBrowserHash = (nextHash: string, historyMode: FormSaverUrlHashHistoryMode): boolean => {
+const updateBrowserHash = (
+    nextHash: string,
+    historyMode: FormSaverUrlHashHistoryMode,
+    keepFirstHashPart = false
+): boolean => {
     if (typeof window === 'undefined') {
         return false
     }
 
-    const normalizedHash = nextHash && nextHash.charAt(0) !== '#' ? `#${nextHash}` : nextHash
+    const formHashBody = stripLeadingHashMarker(nextHash)
+    let normalizedHash: string
+
+    if (keepFirstHashPart) {
+        const firstHashPart = getFirstHashPart(window.location.hash)
+
+        if (formHashBody) {
+            // Keep an empty first slot as `#&...` until another hash owner (for example a map
+            // viewport tracker) writes its prefix. This lets that owner safely preserve our tail.
+            normalizedHash = firstHashPart
+                ? `#${firstHashPart}&${formHashBody}`
+                : `#&${formHashBody}`
+        } else {
+            normalizedHash = firstHashPart ? `#${firstHashPart}` : ''
+        }
+    } else {
+        normalizedHash = formHashBody ? `#${formHashBody}` : ''
+    }
+
     if (window.location.hash === normalizedHash) {
         return true
     }
@@ -351,12 +399,19 @@ const updateBrowserHash = (nextHash: string, historyMode: FormSaverUrlHashHistor
 export const writeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
     historyMode: FormSaverUrlHashHistoryMode = 'replace',
-    defaultValues: Partial<TValues> = {}
-): boolean => updateBrowserHash(serializeFormValuesToUrlHash(values, defaultValues), historyMode)
+    defaultValues: Partial<TValues> = {},
+    keepFirstHashPart = false
+): boolean =>
+    updateBrowserHash(
+        serializeFormValuesToUrlHash(values, defaultValues),
+        historyMode,
+        keepFirstHashPart
+    )
 
 export const clearFormValuesFromUrlHash = (
-    historyMode: FormSaverUrlHashHistoryMode = 'replace'
-): boolean => updateBrowserHash('', historyMode)
+    historyMode: FormSaverUrlHashHistoryMode = 'replace',
+    keepFirstHashPart = false
+): boolean => updateBrowserHash('', historyMode, keepFirstHashPart)
 
 export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstraint<TValues>>(
     storageKey: string,
@@ -371,7 +426,12 @@ export const restoreUrlHashFromStorage = <TValues extends FormSaverValuesConstra
     const registeredDefaults = getRegisteredUrlHashDefaultValues<TValues>(storageKey, storage)
     const defaultValues = Object.assign(registeredDefaults, options.defaultValues)
 
-    return writeFormValuesToUrlHash<TValues>(stored.values, options.historyMode, defaultValues)
+    return writeFormValuesToUrlHash<TValues>(
+        stored.values,
+        options.historyMode,
+        defaultValues,
+        options.keepFirstHashPart
+    )
         ? stored
         : null
 }

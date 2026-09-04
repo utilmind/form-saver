@@ -136,4 +136,79 @@ describe('URL hash form values', () => {
         expect(clearFormValuesFromUrlHash()).toBe(true)
         expect(window.location.hash).toBe('')
     })
+
+    it('keeps an opaque first hash part while reading and writing form values', () => {
+        window.history.replaceState(null, '', '/#39.41,-84.20x39.32,-84.40&searchQuery=existing')
+
+        expect(
+            readFormValuesFromUrlHash<HashSettings>(
+                window.location.hash,
+                TEMPLATE,
+                true,
+                true
+            )
+        ).toEqual({
+            searchQuery: 'existing',
+            enabled: false,
+            resultsPerPage: 20,
+            tags: [],
+            notes: ''
+        })
+
+        expect(
+            writeFormValuesToUrlHash<HashSettings>(
+                { searchQuery: 'shared link', enabled: true },
+                'replace',
+                TEMPLATE,
+                true
+            )
+        ).toBe(true)
+        expect(window.location.hash).toBe(
+            '#39.41,-84.20x39.32,-84.40&searchQuery=shared+link&enabled=1'
+        )
+
+        expect(clearFormValuesFromUrlHash('replace', true)).toBe(true)
+        expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40')
+    })
+
+    it('reserves an empty first hash slot until an external hash owner writes its prefix', () => {
+        expect(
+            writeFormValuesToUrlHash<HashSettings>(
+                { searchQuery: 'filters first' },
+                'replace',
+                TEMPLATE,
+                true
+            )
+        ).toBe(true)
+        expect(window.location.hash).toBe('#&searchQuery=filters+first')
+
+        // This mirrors map-track-pos: replace only the first segment and preserve everything after `&`.
+        const filterTail = window.location.hash.slice(window.location.hash.indexOf('&'))
+        window.history.replaceState(null, '', `/#39.41,-84.20x39.32,-84.40${filterTail}`)
+
+        expect(window.location.hash).toBe(
+            '#39.41,-84.20x39.32,-84.40&searchQuery=filters+first'
+        )
+    })
+
+    it('restores storage into the hash without replacing a preserved first hash part', () => {
+        writeStoredForm<HashSettings>('hash-settings', {
+            searchQuery: 'stored query',
+            enabled: true,
+            resultsPerPage: 20,
+            tags: [],
+            notes: ''
+        })
+        window.history.replaceState(null, '', '/#39.41,-84.20x39.32,-84.40')
+
+        const restored = restoreUrlHashFromStorage<HashSettings>('hash-settings', {
+            defaultValues: TEMPLATE,
+            keepFirstHashPart: true
+        })
+
+        expect(restored?.values.searchQuery).toBe('stored query')
+        expect(window.location.hash).toBe(
+            '#39.41,-84.20x39.32,-84.40&searchQuery=stored+query&enabled=1&resultsPerPage=20'
+        )
+    })
 })

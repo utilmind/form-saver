@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [2026-09-04]: Shared first URL hash segment
+
+### Added
+
+- Added `urlHash.keepFirstHashPart` to `useFormSaver`, `useFormSaverDom`, and `FormSaverScope`, providing the React equivalent of the legacy jQuery `keep1stHash` option.
+- Added `keepFirstHashPart` to the standalone `restoreUrlHashFromStorage()` options.
+- Added tests for preserving a map-style first hash segment, clearing only FormSaver-owned values, and reserving an empty first slot until the external hash owner writes its prefix.
+
+### Changed
+
+- URL hash restore now ignores the opaque first segment when `keepFirstHashPart` is enabled, including when unknown-key restoration is enabled.
+- URL hash writes and clears preserve the current first segment and synchronize FormSaver values only after the first `&`.
+
 ## [2026-07-15]: React URL hash synchronization
 
 ### Added
