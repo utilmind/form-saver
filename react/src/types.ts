@@ -55,6 +55,8 @@ export interface WriteStoredFormOptions<
 export interface FormSaverUrlHashOptions {
     restore?: boolean
     historyMode?: FormSaverUrlHashHistoryMode
+    /** Preserve the opaque first hash segment and synchronize FormSaver values after the first `&`. */
+    keepFirstHashPart?: boolean
 }
 
 export interface RestoreUrlHashFromStorageOptions<
@@ -62,6 +64,8 @@ export interface RestoreUrlHashFromStorageOptions<
 > extends ReadStoredFormOptions {
     historyMode?: FormSaverUrlHashHistoryMode
     defaultValues?: Partial<TValues>
+    /** Preserve the opaque first hash segment and synchronize FormSaver values after the first `&`. */
+    keepFirstHashPart?: boolean
 }
 
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {

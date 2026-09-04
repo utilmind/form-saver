@@ -235,8 +235,28 @@ const form = useFormSaver<SettingsForm>({
 
 - `restore` defaults to `true`. Set it to `false` to write values to the hash without restoring from it.
 - `historyMode` defaults to `'replace'`, which avoids adding a browser-history entry for every saved change. Use `'push'` only when each synchronized state should become a separate history entry.
-- `clearUrlHashValues()` removes the synchronized hash without changing form state or browser storage.
+- `keepFirstHashPart` defaults to `false`. Set it to `true` when another component owns the first hash segment before the first `&`. FormSaver then reads and writes only the remaining hash parameters while leaving that first segment intact. This is the React equivalent of the legacy jQuery `keep1stHash` option and is useful with map viewport trackers.
+- `clearUrlHashValues()` removes only the synchronized FormSaver hash values. When `keepFirstHashPart` is enabled, the preserved first segment remains unchanged.
 - `restoreUrlHashFromStorage()` explicitly rebuilds the compact hash from the complete stored value set. Normally this is unnecessary because `urlHash: true` performs the same synchronization automatically when FormSaver initializes. It is useful when a router keeps the form component mounted while hiding and showing its route.
+
+When `keepFirstHashPart` is enabled, the first hash segment is treated as opaque. For example, a mapping application can keep its viewport first and let FormSaver own everything after the first `&`:
+
+```text
+#39.4196,-84.2093x39.3216,-84.4026&employeesRanges=6-10&showInactive=1
+```
+
+If FormSaver needs to write values before the other hash owner has created its prefix, it temporarily uses an empty first slot such as `#&employeesRanges=6-10`. A later first-segment writer can then replace only that empty prefix while preserving FormSaver's `&...` tail.
+
+```tsx
+const filters = useFormSaver<FilterSettings>({
+    storageKey: 'map-filters',
+    initialValues,
+    urlHash: {
+        keepFirstHashPart: true,
+        historyMode: 'replace'
+    }
+})
+```
 
 The same explicit operation is also exported as a standalone helper. Pass `defaultValues` when calling it outside an active FormSaver hook so default checkbox state can be omitted correctly:
 
@@ -615,7 +635,7 @@ useFormSaver<TValues>({
 | `version`            | `undefined`      | Optional storage format/application version saved in metadata.                                                                                                                                              |
 | `mergeUnknownKeys`   | `true`           | Preserve stored fields that are not present in the current form state.                                                                                                                                      |
 | `restoreUnknownKeys` | `false`          | Include unknown stored fields in React state. Usually keep this `false`.                                                                                                                                    |
-| `urlHash`            | `false`          | Set to `true` to restore from and mirror a compact controlled state into readable URL hash parameters. Empty values and default checkbox state are omitted. The object form supports `restore` and `historyMode`. |
+| `urlHash`            | `false`          | Set to `true` to restore from and mirror a compact controlled state into readable URL hash parameters. Empty values and default checkbox state are omitted. The object form supports `restore`, `historyMode`, and `keepFirstHashPart`. |
 | `mapBeforeSave`      | `undefined`      | Transform values before writing them to storage.                                                                                                                                                            |
 | `mapAfterLoad`       | `undefined`      | Transform or reject values after loading them from storage.                                                                                                                                                 |
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |

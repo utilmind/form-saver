@@ -12,7 +12,7 @@ import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { readStoredForm, writeStoredForm } from '../src/storage'
-import type { FormSaverSaveEvent } from '../src/types'
+import type { FormSaverSaveEvent, FormSaverUrlHashOptions } from '../src/types'
 import { useFormSaver } from '../src/useFormSaver'
 import { installTestBrowserStorage } from './testStorage'
 
@@ -93,7 +93,7 @@ const ControlledDemoWithoutInitialValues = () => {
 interface ControlledDemoProps {
     initialValues?: SettingsFormValues
     debounceMs?: number
-    urlHash?: boolean
+    urlHash?: boolean | FormSaverUrlHashOptions
     saveEvent?: FormSaverSaveEvent
     autosaveIntervalSeconds?: number
     onSave?: () => void
@@ -455,6 +455,32 @@ describe('useFormSaver', () => {
             expect(params.get('title')).toBe('Changed for link')
             expect(params.getAll('tags')).toEqual(['a', 'b'])
         })
+    })
+
+    it('keeps an external first hash part while controlled values restore and change', async () => {
+        window.history.replaceState(
+            null,
+            '',
+            '/#39.41,-84.20x39.32,-84.40&title=Hash+title&enabled=1'
+        )
+
+        const { container } = render(<ControlledDemo urlHash={{ keepFirstHashPart: true }} />)
+
+        await waitFor(() => {
+            expect(getInput(container, 'title').value).toBe('Hash title')
+        })
+        expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
+
+        const title = getInput(container, 'title')
+        fireEvent.change(title, { target: { value: 'Changed title' } })
+        fireEvent.blur(title)
+
+        await waitFor(() => {
+            expect(
+                new URLSearchParams(window.location.hash.split('&').slice(1).join('&')).get('title')
+            ).toBe('Changed title')
+        })
+        expect(window.location.hash.startsWith('#39.41,-84.20x39.32,-84.40&')).toBe(true)
     })
 
     it('flushes focused controlled input and prefers storage over a stale hash after reload', async () => {

@@ -118,6 +118,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         urlHash === true || (typeof urlHash === 'object' && urlHash.restore !== false)
     const urlHashHistoryMode =
         typeof urlHash === 'object' ? (urlHash.historyMode ?? 'replace') : 'replace'
+    const keepFirstHashPart = typeof urlHash === 'object' && urlHash.keepFirstHashPart === true
 
     const [root, setRoot] = useState<TRoot | null>(null)
     const rootRef = useRef<TRoot | null>(null)
@@ -200,7 +201,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             writeFormValuesToUrlHash<FormSaverValues>(
                 hashValues,
                 urlHashHistoryMode,
-                getRegisteredUrlHashDefaultValues<FormSaverValues>(storageKey, storage)
+                getRegisteredUrlHashDefaultValues<FormSaverValues>(storageKey, storage),
+                keepFirstHashPart
             )
         },
         [
@@ -209,7 +211,8 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             storage,
             storageKey,
             urlHashEnabled,
-            urlHashHistoryMode
+            urlHashHistoryMode,
+            keepFirstHashPart
         ]
     )
 
@@ -289,7 +292,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
                               storageKey,
                               window.location.hash,
                               initialValues,
-                              { storage }
+                              { storage, keepFirstHashPart }
                           )
                         : (() => {
                               const stored = readStoredForm<FormSaverValues>(storageKey, {
@@ -371,6 +374,7 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
             onRestoreRef,
             onSaveRef,
             restoreFromUrlHash,
+            keepFirstHashPart,
             storage,
             storageKey,
             urlHashEnabled,
@@ -436,15 +440,16 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
     }, [cancelFocusedAutosave, onErrorRef, storage, storageKey])
 
     const clearUrlHashValues = useCallback((): void => {
-        clearFormValuesFromUrlHash(urlHashHistoryMode)
-    }, [urlHashHistoryMode])
+        clearFormValuesFromUrlHash(urlHashHistoryMode, keepFirstHashPart)
+    }, [keepFirstHashPart, urlHashHistoryMode])
 
     const restoreUrlHashFromStorage = useCallback(() => {
         return restoreStoredUrlHash<FormSaverValues>(storageKey, {
             storage,
-            historyMode: urlHashHistoryMode
+            historyMode: urlHashHistoryMode,
+            keepFirstHashPart
         })
-    }, [storage, storageKey, urlHashHistoryMode])
+    }, [keepFirstHashPart, storage, storageKey, urlHashHistoryMode])
 
     const getValues = useCallback((): FormSaverValues => {
         return root ? collectDomFormValues(root, controlOptions) : {}
