@@ -60,8 +60,16 @@ describe('URL hash form values', () => {
             '|'
         )
 
+        const restoredValues = readFormValuesFromUrlHash<HashSettings>(
+            hash,
+            TEMPLATE,
+            false,
+            false,
+            '|'
+        )
+
         expect(hash).toBe('#tags=alpha|beta%7Cgamma')
-        expect(readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, '|')).toEqual({
+        expect(restoredValues).toEqual({
             searchQuery: '',
             enabled: false,
             resultsPerPage: 20,
@@ -77,10 +85,16 @@ describe('URL hash form values', () => {
             false
         )
 
+        const restoredValues = readFormValuesFromUrlHash<HashSettings>(
+            hash,
+            TEMPLATE,
+            false,
+            false,
+            false
+        )
+
         expect(hash).toBe('#tags=alpha&tags=beta')
-        expect(
-            readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, false)?.tags
-        ).toEqual(['alpha', 'beta'])
+        expect(restoredValues?.tags).toEqual(['alpha', 'beta'])
     })
 
     it('omits empty values and checkbox states that match their defaults', () => {
@@ -207,15 +221,15 @@ describe('URL hash form values', () => {
                 true
             )
         ).toBe(true)
+        const restoredValues = readFormValuesFromUrlHash<HashSettings>(
+            window.location.hash,
+            TEMPLATE,
+            false,
+            true
+        )
+
         expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40&tags=alpha,beta')
-        expect(
-            readFormValuesFromUrlHash<HashSettings>(
-                window.location.hash,
-                TEMPLATE,
-                false,
-                true
-            )?.tags
-        ).toEqual(['alpha', 'beta'])
+        expect(restoredValues?.tags).toEqual(['alpha', 'beta'])
     })
 
     it('reserves an empty first hash slot until an external hash owner writes its prefix', () => {
