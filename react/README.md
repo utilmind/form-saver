@@ -458,7 +458,7 @@ Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In t
 
 Both APIs also use `autosaveIntervalSeconds: 30` by default. After the first unsaved edit in a focused text input or textarea, FormSaver starts one timer. Continued typing does not restart that timer. If the control is still focused and its value is still dirty when the interval expires, FormSaver saves the current values and updates the hash. A successful normal save cancels the timer; a later edit starts a new interval. Set `autosaveIntervalSeconds: 0` to disable this periodic focused-control autosave.
 
-The defaults are exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`, `DEFAULT_FORM_SAVER_SAVE_EVENT`, `DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS`, and `DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR`.
+The defaults are exported as `DEF_FORM_SAVER_DEBOUNCE_MS`, `DEF_FORM_SAVER_SAVE_EVENT`, `DEF_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS`, and `DEF_FORM_SAVER_HASH_ARRAY_SEPARATOR`.
 
 `useFormSaverDom` scans this selector inside the scoped root:
 

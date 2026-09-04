@@ -12,7 +12,7 @@
  *   TypeScript generic types do not exist in the browser at runtime.
  */
 
-import { DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR } from './defaults'
+import { DEF_FORM_SAVER_HASH_ARRAY_SEPARATOR } from './defaults'
 import { shouldPreferStorageAfterPageUnload } from './pageUnload'
 import { readStoredForm } from './storage'
 import type {
@@ -239,7 +239,7 @@ export const readFormValuesFromUrlHash = <TValues extends FormSaverValuesConstra
     templateValues: TValues,
     restoreUnknownKeys = false,
     keepFirstHashPart = false,
-    arraySeparator: string | false = DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR
+    arraySeparator: string | false = DEF_FORM_SAVER_HASH_ARRAY_SEPARATOR
 ): Partial<TValues> | null => {
     if (!hash || hash === '#') {
         return null
@@ -365,7 +365,7 @@ export const resolveFormRestoreSource = <TValues extends FormSaverValuesConstrai
 export const serializeFormValuesToUrlHash = <TValues extends FormSaverValuesConstraint<TValues>>(
     values: Partial<TValues>,
     defaultValues: Partial<TValues> = {},
-    arraySeparator: string | false = DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR
+    arraySeparator: string | false = DEF_FORM_SAVER_HASH_ARRAY_SEPARATOR
 ): string => {
     const serializedParams: string[] = []
 
@@ -467,7 +467,7 @@ export const writeFormValuesToUrlHash = <TValues extends FormSaverValuesConstrai
     historyMode: FormSaverUrlHashHistoryMode = 'replace',
     defaultValues: Partial<TValues> = {},
     keepFirstHashPart = false,
-    arraySeparator: string | false = DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR
+    arraySeparator: string | false = DEF_FORM_SAVER_HASH_ARRAY_SEPARATOR
 ): boolean =>
     updateBrowserHash(
         serializeFormValuesToUrlHash(values, defaultValues, arraySeparator),

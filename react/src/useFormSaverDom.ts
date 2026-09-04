@@ -10,9 +10,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import {
-    DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
-    DEFAULT_FORM_SAVER_DEBOUNCE_MS,
-    DEFAULT_FORM_SAVER_SAVE_EVENT
+    DEF_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
+    DEF_FORM_SAVER_DEBOUNCE_MS,
+    DEF_FORM_SAVER_SAVE_EVENT
 } from './defaults'
 import {
     collectDomFormDefaultValues,
@@ -96,9 +96,9 @@ export const useFormSaverDom = <TRoot extends HTMLElement = HTMLElement>(
         storageKey,
         storage = 'localStorage', // 'localStorage' or 'sessionStorage'
         enabled = true,
-        debounceMs = DEFAULT_FORM_SAVER_DEBOUNCE_MS,
-        saveEvent = DEFAULT_FORM_SAVER_SAVE_EVENT,
-        autosaveIntervalSeconds = DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
+        debounceMs = DEF_FORM_SAVER_DEBOUNCE_MS,
+        saveEvent = DEF_FORM_SAVER_SAVE_EVENT,
+        autosaveIntervalSeconds = DEF_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
         restoreOnMount = true,
         urlHash = false,
         version,
