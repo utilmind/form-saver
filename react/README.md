@@ -204,28 +204,28 @@ A state such as:
 is represented as readable hash parameters:
 
 ```text
-#query=precision+machining&enabled=1&mode=advanced&tags=lathe&tags=mill
+#query=precision+machining&enabled=1&mode=advanced&tags=lathe,mill
 ```
 
-Primitive values use one `name=value` pair and arrays use repeated parameters by default. Empty strings, `null`, empty arrays, and empty array items are omitted from the hash. Boolean checkbox values use compact `1` / `0`; a checkbox is omitted when its current state matches its default. Controlled forms take that default from `initialValues` or the binder default, while DOM forms use the native `defaultChecked` state (the original `checked` attribute). Browser storage still keeps the complete values.
+Primitive values use one `name=value` pair and arrays use one comma-separated parameter by default. Empty strings, `null`, empty arrays, and empty array items are omitted from the hash. Boolean checkbox values use compact `1` / `0`; a checkbox is omitted when its current state matches its default. Controlled forms take that default from `initialValues` or the binder default, while DOM forms use the native `defaultChecked` state (the original `checked` attribute). Browser storage still keeps the complete values.
 
-For shorter hashes, set `urlHash.arraySeparator` to a literal separator such as `,`. FormSaver then writes every array into one parameter instead of repeating the parameter name:
+The default `arraySeparator` is `,`, including when you simply use `urlHash: true`. You can override it with another literal separator, or explicitly disable compact array serialization with `arraySeparator: false` (an empty string also disables it) to use repeated parameters instead:
 
 ```tsx
 const form = useFormSaver<SettingsForm>({
     storageKey: 'settings-form',
     initialValues,
     urlHash: {
-        arraySeparator: ','
+        arraySeparator: false
     }
 })
 ```
 
 ```text
-#query=precision+machining&enabled=1&mode=advanced&tags=lathe,mill
+#query=precision+machining&enabled=1&mode=advanced&tags=lathe&tags=mill
 ```
 
-Each array item is URL-encoded before the literal separator is inserted, so the separator can still occur inside an individual value. For example, `['lathe', 'mill, large']` becomes `tags=lathe,mill%2C+large` and restores to the original two values.
+Each array item is URL-encoded before the literal separator is inserted, so the separator can still occur inside an individual value. For example, with the default comma separator, `['lathe', 'mill, large']` becomes `tags=lathe,mill%2C+large` and restores to the original two values.
 
 Restore order is deterministic:
 
@@ -254,7 +254,7 @@ const form = useFormSaver<SettingsForm>({
 - `restore` defaults to `true`. Set it to `false` to write values to the hash without restoring from it.
 - `historyMode` defaults to `'replace'`, which avoids adding a browser-history entry for every saved change. Use `'push'` only when each synchronized state should become a separate history entry.
 - `keepFirstHashPart` defaults to `false`. Set it to `true` when another component owns the first hash segment before the first `&`. FormSaver then reads and writes only the remaining hash parameters while leaving that first segment intact. This is the React equivalent of the legacy jQuery `keep1stHash` option and is useful with map viewport trackers.
-- `arraySeparator` is unset by default, so arrays use repeated parameters. Set it to a literal separator such as `,` to serialize each array as one compact parameter. Individual items are encoded before joining, so an occurrence of the separator inside a value is preserved.
+- `arraySeparator` defaults to `,`, so arrays are serialized as one compact comma-separated parameter. Set another non-empty string to use a different literal separator, or set it to `false` / `''` to use repeated parameters. Individual items are encoded before joining, so an occurrence of the separator inside a value is preserved.
 - `clearUrlHashValues()` removes only the synchronized FormSaver hash values. When `keepFirstHashPart` is enabled, the preserved first segment remains unchanged.
 - `restoreUrlHashFromStorage()` explicitly rebuilds the compact hash from the complete stored value set. Normally this is unnecessary because `urlHash: true` performs the same synchronization automatically when FormSaver initializes. It is useful when a router keeps the form component mounted while hiding and showing its route.
 
@@ -271,9 +271,7 @@ const filters = useFormSaver<FilterSettings>({
     storageKey: 'map-filters',
     initialValues,
     urlHash: {
-        keepFirstHashPart: true,
-        historyMode: 'replace',
-        arraySeparator: ','
+        keepFirstHashPart: true
     }
 })
 ```
@@ -460,7 +458,7 @@ Set `saveEvent: 'input'` if you explicitly want save-while-typing behavior. In t
 
 Both APIs also use `autosaveIntervalSeconds: 30` by default. After the first unsaved edit in a focused text input or textarea, FormSaver starts one timer. Continued typing does not restart that timer. If the control is still focused and its value is still dirty when the interval expires, FormSaver saves the current values and updates the hash. A successful normal save cancels the timer; a later edit starts a new interval. Set `autosaveIntervalSeconds: 0` to disable this periodic focused-control autosave.
 
-The defaults are exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`, `DEFAULT_FORM_SAVER_SAVE_EVENT`, and `DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS`.
+The defaults are exported as `DEFAULT_FORM_SAVER_DEBOUNCE_MS`, `DEFAULT_FORM_SAVER_SAVE_EVENT`, `DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS`, and `DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR`.
 
 `useFormSaverDom` scans this selector inside the scoped root:
 
@@ -655,7 +653,7 @@ useFormSaver<TValues>({
 | `version`            | `undefined`      | Optional storage format/application version saved in metadata.                                                                                                                                              |
 | `mergeUnknownKeys`   | `true`           | Preserve stored fields that are not present in the current form state.                                                                                                                                      |
 | `restoreUnknownKeys` | `false`          | Include unknown stored fields in React state. Usually keep this `false`.                                                                                                                                    |
-| `urlHash`            | `false`          | Set to `true` to restore from and mirror a compact controlled state into readable URL hash parameters. Empty values and default checkbox state are omitted. The object form supports `restore`, `historyMode`, and `keepFirstHashPart`. |
+| `urlHash`            | `false`          | Set to `true` to restore from and mirror a compact controlled state into readable URL hash parameters. Empty values and default checkbox state are omitted. The object form supports `restore`, `historyMode`, `keepFirstHashPart`, and `arraySeparator`. |
 | `mapBeforeSave`      | `undefined`      | Transform values before writing them to storage.                                                                                                                                                            |
 | `mapAfterLoad`       | `undefined`      | Transform or reject values after loading them from storage.                                                                                                                                                 |
 | `onRestore`          | `undefined`      | Called when values were restored.                                                                                                                                                                           |

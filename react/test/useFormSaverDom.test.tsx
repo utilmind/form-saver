@@ -194,8 +194,8 @@ describe('useFormSaverDom', () => {
         expect(readStoredForm(STORAGE_KEY)?.values.title).toBe('Hash title')
     })
 
-    it('uses the configured array separator for DOM multi-select values', async () => {
-        const { container } = render(<DomDemo urlHash={{ arraySeparator: ',' }} />)
+    it('can disable the default array separator for DOM multi-select values', async () => {
+        const { container } = render(<DomDemo urlHash={{ arraySeparator: false }} />)
         const tags = container.querySelector<HTMLSelectElement>('select[name="tags"]')
 
         if (!tags) {
@@ -207,7 +207,10 @@ describe('useFormSaverDom', () => {
         fireEvent.change(tags)
 
         await waitFor(() => {
-            expect(window.location.hash).toContain('tags=a,b')
+            expect(new URLSearchParams(window.location.hash.slice(1)).getAll('tags')).toEqual([
+                'a',
+                'b'
+            ])
         })
     })
 

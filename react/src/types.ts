@@ -57,8 +57,8 @@ export interface FormSaverUrlHashOptions {
     historyMode?: FormSaverUrlHashHistoryMode
     /** Preserve the opaque first hash segment and synchronize FormSaver values after the first `&`. */
     keepFirstHashPart?: boolean
-    /** Serialize array values into one parameter using this literal separator instead of repeated parameters. */
-    arraySeparator?: string
+    /** Join array values with this separator. Defaults to `,`; set to `false` or an empty string to use repeated parameters. */
+    arraySeparator?: string | false
 }
 
 export interface RestoreUrlHashFromStorageOptions<
@@ -68,8 +68,8 @@ export interface RestoreUrlHashFromStorageOptions<
     defaultValues?: Partial<TValues>
     /** Preserve the opaque first hash segment and synchronize FormSaver values after the first `&`. */
     keepFirstHashPart?: boolean
-    /** Serialize array values into one parameter using this literal separator instead of repeated parameters. */
-    arraySeparator?: string
+    /** Join array values with this separator. Defaults to `,`; set to `false` or an empty string to use repeated parameters. */
+    arraySeparator?: string | false
 }
 
 export interface UseFormSaverOptions<TValues extends FormSaverValuesConstraint<TValues>> {

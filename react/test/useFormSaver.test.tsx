@@ -408,7 +408,7 @@ describe('useFormSaver', () => {
         window.history.replaceState(
             null,
             '',
-            '/#title=Hash+title&enabled=1&mode=accurate&tags=a&tags=b&notes=Hash+notes'
+            '/#title=Hash+title&enabled=1&mode=accurate&tags=a,b&notes=Hash+notes'
         )
 
         const { container } = render(<ControlledDemo urlHash />)
@@ -453,19 +453,22 @@ describe('useFormSaver', () => {
             const params = new URLSearchParams(window.location.hash.slice(1))
 
             expect(params.get('title')).toBe('Changed for link')
-            expect(params.getAll('tags')).toEqual(['a', 'b'])
+            expect(params.get('tags')).toBe('a,b')
         })
     })
 
-    it('uses the configured array separator for controlled array values', async () => {
-        const { container } = render(<ControlledDemo urlHash={{ arraySeparator: ',' }} />)
+    it('can disable the default array separator for controlled array values', async () => {
+        const { container } = render(<ControlledDemo urlHash={{ arraySeparator: false }} />)
         const tags = getSelect(container, 'tags')
         tags.options[0].selected = true
         tags.options[1].selected = true
         fireEvent.change(tags)
 
         await waitFor(() => {
-            expect(window.location.hash).toContain('tags=a,b')
+            expect(new URLSearchParams(window.location.hash.slice(1)).getAll('tags')).toEqual([
+                'a',
+                'b'
+            ])
         })
     })
 

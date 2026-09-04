@@ -13,7 +13,7 @@ All notable changes to this project will be documented in this file.
 ### Changed
 
 - Separator-delimited array items are encoded individually before joining, preserving literal separator characters that belong to an item while keeping the configured separator readable in the address bar.
-- Repeated array parameters remain the default when `arraySeparator` is not configured.
+- Comma-separated array parameters are now the default, including with `urlHash: true`. Set `arraySeparator` to another non-empty string to override the separator, or to `false` / `''` to use repeated parameters.
 
 ## [2026-09-04]: Shared first URL hash segment
 

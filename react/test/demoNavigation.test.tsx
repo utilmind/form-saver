@@ -45,7 +45,7 @@ describe('demo URL synchronization', () => {
         expect(window.location.search).toBe('?demo=dom-hook')
         expect(params.get('projectName')).toBe('DOM project')
         expect(params.get('emailNotifications')).toBe('1')
-        expect(params.getAll('features')).toEqual(['ocr', 'geo'])
+        expect(params.get('features')).toBe('ocr,geo')
         expect(params.get('customReviewed')).toBe('1')
         expect(params.get('customReviewLevel')).toBe('full')
     })

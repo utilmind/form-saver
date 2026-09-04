@@ -10,7 +10,8 @@
 export {
     DEFAULT_FORM_SAVER_AUTOSAVE_INTERVAL_SECONDS,
     DEFAULT_FORM_SAVER_DEBOUNCE_MS,
-    DEFAULT_FORM_SAVER_SAVE_EVENT
+    DEFAULT_FORM_SAVER_SAVE_EVENT,
+    DEFAULT_FORM_SAVER_URL_HASH_ARRAY_SEPARATOR
 } from './defaults'
 export type { DomControlOptions } from './domControls'
 export type { FormSaverScopeProps } from './FormSaverScope'

@@ -38,7 +38,7 @@ beforeEach(() => {
 })
 
 describe('URL hash form values', () => {
-    it('serializes non-empty values, compact booleans, and repeated array parameters', () => {
+    it('serializes non-empty values, compact booleans, and comma-separated arrays by default', () => {
         expect(
             serializeFormValuesToUrlHash<HashSettings>(
                 {
@@ -50,24 +50,37 @@ describe('URL hash form values', () => {
                 },
                 TEMPLATE
             )
-        ).toBe('#searchQuery=lathe+shop&enabled=1&resultsPerPage=50&tags=alpha&tags=beta')
+        ).toBe('#searchQuery=lathe+shop&enabled=1&resultsPerPage=50&tags=alpha,beta')
     })
 
-    it('serializes arrays into one readable parameter with a configured separator', () => {
+    it('allows a custom array separator while preserving that separator inside values', () => {
         const hash = serializeFormValuesToUrlHash<HashSettings>(
-            { tags: ['alpha', 'beta,gamma'] },
+            { tags: ['alpha', 'beta|gamma'] },
             TEMPLATE,
-            ','
+            '|'
         )
 
-        expect(hash).toBe('#tags=alpha,beta%2Cgamma')
-        expect(readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, ',')).toEqual({
+        expect(hash).toBe('#tags=alpha|beta%7Cgamma')
+        expect(readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, '|')).toEqual({
             searchQuery: '',
             enabled: false,
             resultsPerPage: 20,
-            tags: ['alpha', 'beta,gamma'],
+            tags: ['alpha', 'beta|gamma'],
             notes: ''
         })
+    })
+
+    it('can disable compact array serialization and use repeated parameters', () => {
+        const hash = serializeFormValuesToUrlHash<HashSettings>(
+            { tags: ['alpha', 'beta'] },
+            TEMPLATE,
+            false
+        )
+
+        expect(hash).toBe('#tags=alpha&tags=beta')
+        expect(
+            readFormValuesFromUrlHash<HashSettings>(hash, TEMPLATE, false, false, false)?.tags
+        ).toEqual(['alpha', 'beta'])
     })
 
     it('omits empty values and checkbox states that match their defaults', () => {
@@ -98,7 +111,7 @@ describe('URL hash form values', () => {
 
     it('restores runtime types from compact hash values', () => {
         const values = readFormValuesFromUrlHash<HashSettings>(
-            '#searchQuery=precision&enabled=1&resultsPerPage=75&tags=alpha&tags=beta',
+            '#searchQuery=precision&enabled=1&resultsPerPage=75&tags=alpha,beta',
             TEMPLATE
         )
 
@@ -142,7 +155,7 @@ describe('URL hash form values', () => {
         expect(restored?.values.searchQuery).toBe('stored query')
         expect(params.get('searchQuery')).toBe('stored query')
         expect(params.get('enabled')).toBe('1')
-        expect(params.getAll('tags')).toEqual(['alpha', 'beta'])
+        expect(params.get('tags')).toBe('alpha,beta')
         expect(params.has('notes')).toBe(false)
     })
 
@@ -183,7 +196,7 @@ describe('URL hash form values', () => {
         expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40')
     })
 
-    it('combines a preserved first hash part with separator-delimited arrays', () => {
+    it('combines a preserved first hash part with default comma-separated arrays', () => {
         window.history.replaceState(null, '', '/#39.41,-84.20x39.32,-84.40')
 
         expect(
@@ -191,8 +204,7 @@ describe('URL hash form values', () => {
                 { tags: ['alpha', 'beta'] },
                 'replace',
                 TEMPLATE,
-                true,
-                ','
+                true
             )
         ).toBe(true)
         expect(window.location.hash).toBe('#39.41,-84.20x39.32,-84.40&tags=alpha,beta')
@@ -201,8 +213,7 @@ describe('URL hash form values', () => {
                 window.location.hash,
                 TEMPLATE,
                 false,
-                true,
-                ','
+                true
             )?.tags
         ).toEqual(['alpha', 'beta'])
     })
